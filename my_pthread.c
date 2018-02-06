@@ -74,6 +74,13 @@ void wrapper(void* (*func)(void*),void* args)
 
 void alarm_handler(int signum)
 {
+
+	//very roughly speaking, this is how this should work
+	queue[curr->priority] = curr->next; //if not NULL
+	curr->priority += 1; //if not priority level 4
+	curr->nxt = queue[curr->priority]; //if not NULL
+	queue[curr->priority] = curr;
+	swapcontext(&curr->context, &cxt_sched);
 	return;
 }
 
