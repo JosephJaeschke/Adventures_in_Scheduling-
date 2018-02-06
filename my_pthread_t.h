@@ -43,16 +43,15 @@ typedef struct my_pthread_mutex_t
 
 /* define your data structures here: */
 
-// Feel free to add your own auxiliary data structures
-
-
-/* Function Declarations: */
-void alarm_handler(int signum)
-{
-	return;
-}
-
 tcb* queue;
+
+// Feel free to add your own auxiliary data structures
+/* Function Declarations: */
+
+void wrapper(void* (*func)(void*),void* args);
+void alarm_handler(int signum);
+void scheduler();
+void maintenance();
 
 /* create a new thread */
 int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*function)(void*), void * arg);

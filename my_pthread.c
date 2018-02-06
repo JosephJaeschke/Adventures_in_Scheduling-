@@ -14,7 +14,7 @@
 
 #define MAX_STACK 1000 //not sure a good value
 #define MAX_THREAD 256 //not sure a good value
-#define MAINTENANCE 1 //not sure a good value
+#define MAINTENANCE 10 //not sure a good value
 #define PRIORITY_LEVELS 5 //not sure good value
 
 short mode=0; //0 for SYS, 1 for USR?
@@ -63,6 +63,16 @@ typedef struct ucontext {
 	...
 } ucontext_t;
 */
+
+void wrapper(void* (*func)(void*),void* args)
+{
+	return;
+}
+
+void alarm_handler(int signum)
+{
+	return;
+}
 
 void scheduler()
 {
