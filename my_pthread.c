@@ -197,6 +197,8 @@ int my_pthread_create(my_pthread_t* thread, pthread_attr_t* attr, void*(*functio
 
 /* give CPU pocession to other user level threads voluntarily */
 int my_pthread_yield() {
+	curr->priority = 4;
+	swapcontext(&curr->context, &ctx_sched);
 	return 0;
 };
 
