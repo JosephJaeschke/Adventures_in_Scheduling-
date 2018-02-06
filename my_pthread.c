@@ -91,13 +91,18 @@ int my_pthread_create(my_pthread_t* thread, pthread_attr_t* attr, void*(*functio
 	{
 		//init stuff
 		//set up main thread/context
-		queue=malloc(PRIORITY_LEVELS*sizeof(tcb));
+		queue=malloc(PRIORITY_LEVELS*sizeof(tcb*));
+		int i=0;
+		for(i;i<PRIORITY_LEVELS;i++)
+		{
+			queue[0]=NULL;
+		}
 		if(getcontext(&ctx_main)==-1)
 		{
 			printf("ERROR: Failed to get context for main\n");
 			return 1;
 		}
-		tcb* maint=malloc(sizeof(tcb));
+		tcb* maint=malloc(sizeof(tcb*));
 		maint->state=0;
 		maint->tid=idCounter++;
 		maint->context=ctx_main;
@@ -116,7 +121,7 @@ int my_pthread_create(my_pthread_t* thread, pthread_attr_t* attr, void*(*functio
 		ctx_sched.uc_link=&ctx_main;
 		ctx_sched.uc_stack.ss_sp=malloc(MAX_STACK);
 		ctx_sched.uc_stack.ss_size=MAX_STACK;
-		tcb* schedt=malloc(sizeof(tcb));
+		tcb* schedt=malloc(sizeof(tcb*));
 		schedt->state=0;
 		schedt->tid=idCounter++;
 		schedt->context=ctx_sched;
@@ -136,7 +141,7 @@ int my_pthread_create(my_pthread_t* thread, pthread_attr_t* attr, void*(*functio
 		ctx_maintenance.uc_link=&ctx_main;
 		ctx_maintenance.uc_stack.ss_sp=malloc(MAX_STACK);
 		ctx_maintenance.uc_stack.ss_size=MAX_STACK;
-		tcb* maintenancet=malloc(sizeof(tcb));
+		tcb* maintenancet=malloc(sizeof(tcb*));
 		maintenancet->state=0;
 		maintenancet->tid=idCounter++;
 		maintenancet->context=ctx_maintenance;
@@ -164,7 +169,7 @@ int my_pthread_create(my_pthread_t* thread, pthread_attr_t* attr, void*(*functio
 	ctx_func.uc_link=&ctx_main;
 	ctx_func.uc_stack.ss_sp=malloc(MAX_STACK);
 	ctx_func.uc_stack.ss_size=MAX_STACK;
-	tcb* t=malloc(sizeof(tcb));
+	tcb* t=malloc(sizeof(tcb*));
 	t->state=0;
 	t->tid=idCounter++;
 	t->context=ctx_func;
@@ -174,6 +179,16 @@ int my_pthread_create(my_pthread_t* thread, pthread_attr_t* attr, void*(*functio
 	t->nxt=NULL;
 	t->state=1;
 	makecontext(&t->context,function(arg),1,&arg); //i don't know about second param
+	if(queue[0]==NULL)
+	{
+		queue[0]=t;
+	}
+	else
+	{
+		tcb* ptr=malloc(sizeof(tcb*));
+		t->nxt=queue[0];
+		queue[0]=t;
+	}
 	return 0;
 }
 
