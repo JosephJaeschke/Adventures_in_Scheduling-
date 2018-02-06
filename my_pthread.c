@@ -11,6 +11,8 @@
 #include "ucontext.h"
 #include <stdlib.h>
 #include <signal.h>
+#include <sys/time.h>
+#include <unistd.h>
 
 #define MAX_STACK 1000 //not sure a good value
 #define MAX_THREAD 256 //not sure a good value
@@ -22,6 +24,7 @@ short ptinit=0; //init main stuff at first call of pthread_create
 short maintenanceCounter=MAINTENANCE;
 my_pthread_t idCounter=0;
 ucontext_t ctx_main, ctx_sched, ctx_maintenance;
+tcb* curr;
 
 
 /*
@@ -111,6 +114,7 @@ int my_pthread_create(my_pthread_t* thread, pthread_attr_t* attr, void*(*functio
 		maint->priority=0;
 		maint->nxt=NULL;
 		maint->state=1;
+		curr=maint;
 
 		//set up scheduler thread/context
 		if(getcontext(&ctx_sched)==-1)
@@ -185,7 +189,6 @@ int my_pthread_create(my_pthread_t* thread, pthread_attr_t* attr, void*(*functio
 	}
 	else
 	{
-		tcb* ptr=malloc(sizeof(tcb*));
 		t->nxt=queue[0];
 		queue[0]=t;
 	}
