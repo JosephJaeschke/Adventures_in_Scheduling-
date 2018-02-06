@@ -12,11 +12,13 @@
 
 #define MAX_STACK 1000 //not sure a good value
 #define MAX_THREAD 256 //not sure a good value
+#define MAINTENANCE 10
 
 short mode=0; //0 for SYS, 1 for USR?
 short ptinit=0; //init main stuff at first call of pthread_create
-short idCounter=0;
-ucontext_t ctx_main;
+short maintenanceCounter=MAINTENANCE;
+my_pthread_t idCounter=0;
+ucontext_t ctx_main, ctx_sched, ctx_maintenance;
 
 /*
 ucontext
@@ -58,16 +60,27 @@ typedef struct ucontext {
 } ucontext_t;
 */
 
+void scheduler()
+{
+	return;
+}
+
+void maintenance()
+{
+	return;
+}
+
 /* create a new thread */
 int my_pthread_create(my_pthread_t* thread, pthread_attr_t* attr, void*(*function)(void*), void * arg)
 {
 	if(ptinit==0)
 	{
 		//init stuff
+		//set up main thread/context
 		if(getcontext(&ctx_main)==-1)
 		{
 			printf("ERROR: Failed to get context for main\n");
-			exit(1);
+			return 1;
 		}
 		tcb* maint=malloc(sizeof(tcb));
 		maint->state=0;
@@ -75,14 +88,55 @@ int my_pthread_create(my_pthread_t* thread, pthread_attr_t* attr, void*(*functio
 		maint->context=ctx_main;
 		maint->retVal=NULL;
 		//maint->timeslice=0;
-		//maint->priority=0;
+		maint->priority=0;
 		maint->nxt=NULL;
 		maint->state=1;
+
+		//set up scheduler thread/context
+		if(getcontext(&ctx_sched)==-1)
+		{
+			printf("ERROR: Failed to get context for scheduler\n");
+			return 1;
+		}
+		ctx_sched.uc_link=&ctx_main;
+		ctx_sched.uc_stack.ss_sp=malloc(MAX_STACK);
+		ctx_sched.uc_stack.ss_size=MAX_STACK;
+		tcb* schedt=malloc(sizeof(tcb));
+		schedt->state=0;
+		schedt->tid=idCounter++;
+		schedt->context=ctx_sched;
+		schedt->retVal=NULL;
+		//sched->timeslice=0;
+		schedt->priority=0;
+		schedt->nxt=NULL;
+		schedt->state=1;
+		makecontext(&schedt->context,scheduler,0);
+
+		//set up maintenance thread/context
+		if(getcontext(&ctx_maintenance)==-1)
+		{
+			printf("ERROR: Failed to get context for maintenance\n");
+			return 1;
+		}
+		ctx_maintenance.uc_link=&ctx_main;
+		ctx_maintenance.uc_stack.ss_sp=malloc(MAX_STACK);
+		ctx_maintenance.uc_stack.ss_size=MAX_STACK;
+		tcb* maintenancet=malloc(sizeof(tcb));
+		maintenancet->state=0;
+		maintenancet->tid=idCounter++;
+		maintenancet->context=ctx_maintenance;
+		maintenancet->retVal=NULL;
+		//maintenancet->timeslice=0;
+		maintenancet->priority=0;
+		maintenancet->nxt=NULL;
+		maintenancet->state=1;
+		makecontext(&maintenancet->context,maintenance,0);
+
 		ptinit=1;
 	}
 	if(idCounter==MAX_THREAD)
 	{
-		printf("Maximum amount of threads are running\n");
+		printf("Maximum amount of threads are made, could not make new one\n");
 		return 1;
 	}
 	ucontext_t ctx_func;
@@ -100,7 +154,7 @@ int my_pthread_create(my_pthread_t* thread, pthread_attr_t* attr, void*(*functio
 	t->context=ctx_func;
 	t->retVal=NULL;
 	//t->timeslice=0;
-	//t->priority=0;
+	t->priority=0;
 	t->nxt=NULL;
 	t->state=1;
 	makecontext(&t->context,function(arg),1,&arg); //i don't know about second param
