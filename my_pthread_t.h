@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ucontext.h>
+#include <signal.h>
 
 typedef uint my_pthread_t;
 
@@ -46,6 +47,12 @@ typedef struct my_pthread_mutex_t
 
 
 /* Function Declarations: */
+void alarm_handler(int signum)
+{
+	return;
+}
+
+tcb* queue;
 
 /* create a new thread */
 int my_pthread_create(my_pthread_t * thread, pthread_attr_t * attr, void *(*function)(void*), void * arg);

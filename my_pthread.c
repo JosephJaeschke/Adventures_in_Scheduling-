@@ -10,16 +10,19 @@
 #include "my_pthread_t.h"
 #include "ucontext.h"
 #include <stdlib.h>
+#include <signal.h>
 
 #define MAX_STACK 1000 //not sure a good value
 #define MAX_THREAD 256 //not sure a good value
-#define MAINTENANCE 10
+#define MAINTENANCE 1 //not sure a good value
+#define PRIORITY_LEVELS 5 //not sure good value
 
 short mode=0; //0 for SYS, 1 for USR?
 short ptinit=0; //init main stuff at first call of pthread_create
 short maintenanceCounter=MAINTENANCE;
 my_pthread_t idCounter=0;
 ucontext_t ctx_main, ctx_sched, ctx_maintenance;
+
 
 /*
 ucontext
@@ -78,6 +81,7 @@ int my_pthread_create(my_pthread_t* thread, pthread_attr_t* attr, void*(*functio
 	{
 		//init stuff
 		//set up main thread/context
+		queue=malloc(PRIORITY_LEVELS*sizeof(tcb));
 		if(getcontext(&ctx_main)==-1)
 		{
 			printf("ERROR: Failed to get context for main\n");
@@ -133,6 +137,7 @@ int my_pthread_create(my_pthread_t* thread, pthread_attr_t* attr, void*(*functio
 		maintenancet->state=1;
 		makecontext(&maintenancet->context,maintenance,0);
 
+		signal(SIGALRM,alarm_handler);
 		ptinit=1;
 	}
 	if(idCounter==MAX_THREAD)
