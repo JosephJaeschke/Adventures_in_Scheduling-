@@ -69,6 +69,8 @@ typedef struct ucontext {
 
 void wrapper(void* (*func)(void*),void* args)
 {
+	curr->retVal=(*func)(args);
+	my_pthread_exit(curr->retVal);
 	return;
 }
 
