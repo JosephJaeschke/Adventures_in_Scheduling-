@@ -76,7 +76,6 @@ void wrapper(void* (*func)(void*),void* args)
 
 void alarm_handler(int signum)
 {
-
 	//very roughly speaking, this is how this should work
 	queue[curr->priority] = curr->nxt; //if not NULL
 	curr->priority += 1; //if not priority level 4
@@ -104,6 +103,7 @@ int my_pthread_create(my_pthread_t* thread, pthread_attr_t* attr, void*(*functio
 		//init stuff
 		//set up main thread/context
 		queue=malloc(PRIORITY_LEVELS*sizeof(tcb*));
+		terminating=malloc(MAX_THREAD*sizeof(tcb*)); //maybe change length
 		int i=0;
 		for(i;i<PRIORITY_LEVELS;i++)
 		{
@@ -205,18 +205,60 @@ int my_pthread_create(my_pthread_t* thread, pthread_attr_t* attr, void*(*functio
 }
 
 /* give CPU pocession to other user level threads voluntarily */
-int my_pthread_yield() {
+int my_pthread_yield()
+{
 	curr->priority = PRIORITY_LEVELS-1;
+	//need to change timeslice to correspond to change in priority level
 	swapcontext(&curr->context, &ctx_sched);
 	return 0;
-};
+}
 
 /* terminate a thread */
-void my_pthread_exit(void *value_ptr) {
-};
+void my_pthread_exit(void *value_ptr)
+{
+	//mark thread as terminating
+	curr->state=4;
+	//remove curr from queue
+	if(queue[curr->priority]->tid==curr->tid)
+	{
+		queue[curr->priority]=queue[curr->priority]->nxt;
+	}
+	else
+	{
+		tcb* ptr;
+		ptr=queue[curr->priority];
+		tcb* prev;
+		while(1)
+		{
+			if(ptr->tid==curr->tid)
+			{
+				prev->nxt=ptr->nxt;
+				break;
+			}
+			prev=ptr;
+			ptr=ptr->nxt;
+		}
+	}
+	//add curr to terminating list
+	if(terminating==NULL)
+	{
+		terminating=curr;
+	}
+	else
+	{
+		curr->nxt=terminating;
+		terminating=curr;
+		
+	}
+	//yield thread
+	my_pthread_yield();
+	return;
+}
 
 /* wait for thread termination */
-int my_pthread_join(my_pthread_t thread, void **value_ptr) {
+int my_pthread_join(my_pthread_t thread, void **value_ptr)
+{
+
 	return 0;
 };
 

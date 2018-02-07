@@ -45,6 +45,7 @@ typedef struct my_pthread_mutex_t
 /* define your data structures here: */
 
 tcb** queue;
+tcb* terminating;
 
 // Feel free to add your own auxiliary data structures
 /* Function Declarations: */
