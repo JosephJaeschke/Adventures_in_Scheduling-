@@ -23,6 +23,7 @@ short mode=0; //0 for SYS, 1 for USR?
 short ptinit=0; //init main stuff at first call of pthread_create
 short maintenanceCounter=MAINTENANCE;
 my_pthread_t idCounter=0;
+int activeThreads=0;
 ucontext_t ctx_main, ctx_sched, ctx_maintenance;
 tcb* curr;
 
@@ -170,6 +171,7 @@ int my_pthread_create(my_pthread_t* thread, pthread_attr_t* attr, void*(*functio
 		ctx_sched.uc_stack.ss_size=MAX_STACK;
 		tcb* schedt=malloc(sizeof(tcb*));
 		schedt->state=0;
+		activeThreads++;
 		schedt->tid=idCounter++;
 		schedt->context=ctx_sched;
 		schedt->retVal=NULL;
@@ -202,7 +204,7 @@ int my_pthread_create(my_pthread_t* thread, pthread_attr_t* attr, void*(*functio
 		signal(SIGALRM,alarm_handler);
 		ptinit=1;
 	}
-	if(idCounter==MAX_THREAD)
+	if(activeThreads==MAX_THREAD)
 	{
 		printf("ERROR: Maximum amount of threads are made, could not make new one\n");
 		return 1;
@@ -314,6 +316,7 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr)
 		value_ptr=ptr->retVal;
 		terminating=terminating->nxt;
 		free(ptr);
+		activeThreads--;
 		curr->state=1;
 	}
 	else
@@ -325,6 +328,8 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr)
 			if(ptr->tid==thread)
 			{
 				value_ptr=ptr->retVal; //not too sure about this (pointer stuff)
+				free(ptr);
+				activeThreads--;
 				break;
 			}
 			ptr=ptr->nxt;
