@@ -14,7 +14,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-#define MAX_STACK 1000 //not sure a good value
+#define MAX_STACK 100000 //not sure a good value
 #define MAX_THREAD 256 //not sure a good value
 #define MAINTENANCE 10 //not sure a good value
 #define PRIORITY_LEVELS 5 //not sure good value
@@ -90,6 +90,12 @@ void scheduler()
 	int i,found=0;
 	tcb* ptr;
 	curr->state=1;
+	maintenanceCounter--;
+	if(maintenanceCounter==0)
+	{
+		maintenanceCounter=MAINTENANCE;
+		swapcontext(&ctx_sched,&ctx_maintenance);
+	}
 	for(i=0;i<PRIORITY_LEVELS;i++)
 	{
 		ptr=queue[i];
@@ -119,6 +125,7 @@ void scheduler()
 
 void maintenance()
 {
+	swapcontext(&ctx_maintenance,&ctx_sched);
 	return;
 }
 
