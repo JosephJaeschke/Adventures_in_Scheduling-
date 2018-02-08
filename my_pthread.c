@@ -170,7 +170,7 @@ int my_pthread_create(my_pthread_t* thread, pthread_attr_t* attr, void*(*functio
 	}
 	if(idCounter==MAX_THREAD)
 	{
-		printf("Maximum amount of threads are made, could not make new one\n");
+		printf("ERROR: Maximum amount of threads are made, could not make new one\n");
 		return 1;
 	}
 	ucontext_t ctx_func;
@@ -214,8 +214,12 @@ int my_pthread_yield()
 }
 
 /* terminate a thread */
-void my_pthread_exit(void *value_ptr)
+void my_pthread_exit(void* value_ptr)
 {
+	if(value_ptr==NULL)
+	{
+		return;
+	}
 	//mark thread as terminating
 	curr->state=4;
 	//remove curr from queue
@@ -243,6 +247,7 @@ void my_pthread_exit(void *value_ptr)
 	if(terminating==NULL)
 	{
 		terminating=curr;
+		curr->nxt=NULL;
 	}
 	else
 	{
@@ -250,6 +255,8 @@ void my_pthread_exit(void *value_ptr)
 		terminating=curr;
 		
 	}
+	//set value_ptr to retVal of terminating thread?
+	value_ptr=curr->retVal;
 	//yield thread
 	my_pthread_yield();
 	return;
@@ -258,9 +265,33 @@ void my_pthread_exit(void *value_ptr)
 /* wait for thread termination */
 int my_pthread_join(my_pthread_t thread, void **value_ptr)
 {
-
+	//mark thread as waiting
+	curr->state=3;
+	//look for "thread" in terminating list
+	tcb* ptr=terminating;
+	if(terminating->tid==thread)
+	{
+		value_ptr=ptr->retVal;
+		terminating=terminating->nxt;
+		free(ptr);
+		curr->state=1;
+	}
+	else
+	{
+		tcb* prev=ptr;
+		ptr=ptr->nxt;
+		while(1)
+		{
+			if(ptr->tid==thread)
+			{
+				value_ptr=ptr->retVal; //not too sure about this (pointer stuff)
+				break;
+			}
+			ptr=ptr->nxt;
+		}
+	}
 	return 0;
-};
+}
 
 /* initial the mutex lock */
 int my_pthread_mutex_init(my_pthread_mutex_t *mutex, const pthread_mutexattr_t *mutexattr) {
