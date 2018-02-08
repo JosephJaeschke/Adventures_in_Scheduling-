@@ -87,6 +87,33 @@ void alarm_handler(int signum)
 
 void scheduler()
 {
+	int i,found=0;
+	tcb* ptr;
+	curr->state=1;
+	for(i=0;i<PRIORITY_LEVELS;i++)
+	{
+		ptr=queue[i];
+		while(ptr!=NULL)
+		{
+			if(ptr->state==1)
+			{
+				ptr->state=2;
+				curr=ptr;
+				found=1;
+				swapcontext(&ctx_sched,&curr->context);
+				break;
+			}
+			ptr=ptr->nxt;
+		}
+		if(found)
+		{
+			break;
+		}
+	}
+	if(!found)
+	{
+		printf("Found no thread ready to run\n");
+	}
 	return;
 }
 
@@ -218,6 +245,7 @@ void my_pthread_exit(void* value_ptr)
 {
 	if(value_ptr==NULL)
 	{
+		printf("value_ptr is NULL\n");
 		return;
 	}
 	//mark thread as terminating
@@ -265,6 +293,11 @@ void my_pthread_exit(void* value_ptr)
 /* wait for thread termination */
 int my_pthread_join(my_pthread_t thread, void **value_ptr)
 {
+	if(value_ptr==NULL)
+	{
+		printf("value_ptr is NULL\n");
+		return 1;
+	}
 	//mark thread as waiting
 	curr->state=3;
 	//look for "thread" in terminating list
@@ -296,7 +329,7 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr)
 /* initial the mutex lock */
 int my_pthread_mutex_init(my_pthread_mutex_t *mutex, const pthread_mutexattr_t *mutexattr) {
 	return 0;
-};
+}
 
 /* aquire the mutex lock */
 int my_pthread_mutex_lock(my_pthread_mutex_t *mutex) {
