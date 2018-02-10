@@ -29,8 +29,9 @@ typedef struct threadControlBlock
 	void* retVal;
 	ucontext_t context;
 	//stack
-	int timeSlice;
+	int timeslice;
 	int priority;
+	int regPriority;
 	struct threadControlBlock* nxt;
 } tcb; 
 
