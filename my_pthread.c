@@ -88,12 +88,17 @@ void alarm_handler(int signum)
 	//maybe there is just something i am missing
 	//let me know if there is but i don't think so
 	//since the scheduler takes care of putting threads back and taking new ones out
+	if(mode==1)
+	{
+		return;
+	}
 	swapcontext(&curr->context, &ctx_sched);
 	return;
 }
 
 void scheduler()
 {
+	mode=1;
 	int i,found=0;
 	tcb* ptr;
 	curr->state=1;
@@ -130,7 +135,7 @@ void scheduler()
 			if(ptr->state==1)
 			{
 				ptr->state=2;
-					curr=ptr;
+				curr=ptr;
 				found=1;
 				break;
 			}
@@ -150,6 +155,7 @@ void scheduler()
 	timer.it_value.tv_sec=0;
 	timer.it_value.tv_usec=(curr->priority+1)*25000;
 	getitimer(ITIMER_REAL,&timer); //make sure this works right
+	mode=0;
 	swapcontext(&ctx_sched,&curr->context);
 	return;
 }
@@ -160,7 +166,7 @@ void maintenance()
 	//give all threads priority 0 to prevent starvation. (does this fix priority inversion?)
 	int i;
 	tcb* top=queue[0];
-	//put everything in first level
+	//put everything in first level (i think the book did something like this)
 	for(i=1;i<PRIORITY_LEVELS;i++)
 	{
 		while(top->nxt!=NULL)
@@ -177,6 +183,7 @@ void maintenance()
 void clean() //still need to setup context
 {
 	//set scheduler's uclink to this so cleanup can be done when the scheduler ends
+	//i think just free stuff
 	return;
 }
 
@@ -208,6 +215,15 @@ int my_pthread_create(my_pthread_t* thread, pthread_attr_t* attr, void*(*functio
 		maint->nxt=NULL;
 		maint->state=1;
 		curr=maint;
+
+		/*
+		//set up context for cleanup
+		if(getcontext(&ctx_clean)==-1)
+		{
+			printf("ERROR: Failed to get context for cleanup\n");
+			return;
+		}
+		*/
 
 		//set up scheduler thread/context
 		if(getcontext(&ctx_sched)==-1)

@@ -40,7 +40,9 @@ typedef struct my_pthread_mutex_t
 {
 	int locked;
 	int isinit;
-	tcb* nxt; //whoever first tried to get the locked lock
+	tcb* has; //whoever first tried to get the locked lock
+	//has's nxt should be next in line for the lock and so on since it should
+	//not be in the run queue
 } my_pthread_mutex_t;
 
 /* define your data structures here: */
