@@ -396,12 +396,32 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr)
 }
 
 /* initial the mutex lock */
-int my_pthread_mutex_init(my_pthread_mutex_t *mutex, const pthread_mutexattr_t *mutexattr) {
+int my_pthread_mutex_init(my_pthread_mutex_t *mutex, const pthread_mutexattr_t *mutexattr) 
+{
+	//from my understanding, the user is passing in a pointer to a my_pthread_mutex_t object, which is a struct pointer?
+	if (mutexList == NULL)
+	{
+		mutexList =  mutex;
+	}else{
+		my_pthread_mutex_t *ptr = mutexList;
+		while (ptr->next != NULL)
+		{
+			ptr = ptr->next;
+			
+		}
+		ptr->next = mutex;
+	}
+	mutex->locked = 0;
+	mutex->has = curr;
+	mutex->next = NULL;
+	//I'm not sure if we are supposed to do anything with the attr. I think it is only included in here because if we are using code with regular pthread_mutes function calls then this parameter will be included. The fact that it does not say my_pthread_mutexattr_t leads me to believe that we can safely ignore this(?)
 	return 0;
 }
 
 /* aquire the mutex lock */
-int my_pthread_mutex_lock(my_pthread_mutex_t *mutex) {
+int my_pthread_mutex_lock(my_pthread_mutex_t *mutex) 
+{
+	
 	return 0;
 };
 

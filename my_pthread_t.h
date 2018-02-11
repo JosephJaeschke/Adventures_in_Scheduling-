@@ -38,17 +38,18 @@ typedef struct threadControlBlock
 /* mutex struct definition */
 typedef struct my_pthread_mutex_t 
 {
-	int locked;
-	int isinit;
+	int locked; //unlocked = 0; locked = 1;
 	tcb* has; //whoever first tried to get the locked lock
 	//has's nxt should be next in line for the lock and so on since it should
 	//not be in the run queue
+	struct my_pthread_mutex_t* next; //pointer to next mutex to create mutexList
 } my_pthread_mutex_t;
 
 /* define your data structures here: */
 
 tcb** queue;
 tcb* terminating;
+my_pthread_mutex_t* mutexList;
 
 // Feel free to add your own auxiliary data structures
 /* Function Declarations: */
