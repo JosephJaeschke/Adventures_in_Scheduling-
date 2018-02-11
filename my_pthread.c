@@ -431,7 +431,33 @@ int my_pthread_mutex_unlock(my_pthread_mutex_t *mutex) {
 };
 
 /* destroy the mutex */
-int my_pthread_mutex_destroy(my_pthread_mutex_t *mutex) {
+int my_pthread_mutex_destroy(my_pthread_mutex_t *mutex) 
+{
+	if (mutex->locked == 1)
+	{
+		printf("ERROR: Attempting to destroy LOCKED mutex\n");
+		return 1;
+	}
+	mutex->locked = 2;
+	my_pthread_mutex_t *prev, *ptr;
+	ptr = mutexList;
+	while (ptr->next != NULL)
+	{
+		if (ptr == mutex)
+		{
+			if (prev == NULL)
+			{
+				mutexList = mutex->next;
+				mutex->next = NULL;
+			}else{
+				prev->next = mutex->next;
+				mutex->next = NULL;
+			}
+		}else{
+			prev = ptr;
+			ptr = ptr->next;
+		}
+	}
 	return 0;
-};
+}
 
