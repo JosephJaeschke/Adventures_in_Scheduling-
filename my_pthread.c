@@ -14,7 +14,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-#define MAX_STACK 10000 //not sure a good value
+#define MAX_STACK 32000 //my TA told someone that 32k is a good number
 #define MAX_THREAD 64 //TA said a power of 2 and referenced 32
 #define MAX_MUTEX 64 //TA said a power of 2 and referenced 32
 #define MAINTENANCE 10 //not sure a good value
@@ -91,6 +91,38 @@ void alarm_handler(int signum)
 	if(mode==1)
 	{
 		return;
+	}
+	//The signal handler is activated when a thread has run for the full duration of itimerval. This does not mean that the thread is completed and ready for exit. For the cases where the thread is not terminated but instead placed back into the priority queue, it needs to update the priority level here. We will also need to move it to the correct priority spot in the queue in here.
+	//curr->priority = PRIORITY_LEVELS-1;
+	if (queue[curr->priority]->tid == curr->tid)
+	{
+		queue[curr->priority] = curr->nxt;
+	}else{
+		tcb *ptr, *prev;
+		ptr = queue[curr->priority];
+		while(ptr->nxt != NULL)
+		{
+			if (ptr->tid == curr->tid)
+			{
+				prev->nxt = ptr->nxt;
+				break;
+			}
+			prev = ptr;
+			ptr = ptr->nxt;
+		}
+	}
+	curr->priority = PRIORITY_LEVELS-1;
+	curr->nxt = NULL;
+	if (queue[PRIORITY_LEVELS-1] == NULL)
+	{
+		queue[PRIORITY_LEVELS-1] = curr;
+	}else{
+		tcb *ptr = queue[PRIORITY_LEVELS-1];
+		while (ptr->nxt != NULL)
+		{
+			ptr = ptr->nxt;
+		}
+		ptr->nxt = curr;
 	}
 	swapcontext(&curr->context, &ctx_sched);
 	return;
