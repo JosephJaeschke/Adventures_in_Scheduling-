@@ -505,6 +505,7 @@ int my_pthread_mutex_unlock(my_pthread_mutex_t *mutex)
 	__atomic_clear(&mutex->locked, __ATOMIC_SEQ_CST);
 	tcb *ptr = mutex->waiting;
 	mutex->waiting = ptr->nxt;
+	ptr->state = 1; //change state to ready
 	queue[0] = ptr;	
 	return 0;
 }
