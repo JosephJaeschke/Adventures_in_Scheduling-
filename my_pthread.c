@@ -92,8 +92,14 @@ void alarm_handler(int signum)
 	{
 		return;
 	}
-	//The signal handler is activated when a thread has run for the full duration of itimerval. This does not mean that the thread is completed and ready for exit. For the cases where the thread is not terminated but instead placed back into the priority queue, it needs to update the priority level here. We will also need to move it to the correct priority spot in the queue in here.
-	//curr->priority = PRIORITY_LEVELS-1;
+	//The signal handler is activated when a thread has run for the full 
+	//duration of itimerval. This does not mean that the thread is completed 
+	//and ready for exit. For the cases where the thread is not terminated 
+	//but instead placed back into the priority queue, it needs to update 
+	//the priority level here. We will also need to move it to the correct 
+	//priority spot in the queue in here.
+	
+	//remove curr from queue at old priority level
 	if (queue[curr->priority]->tid == curr->tid)
 	{
 		queue[curr->priority] = curr->nxt;
@@ -111,19 +117,9 @@ void alarm_handler(int signum)
 			ptr = ptr->nxt;
 		}
 	}
+	//update curr->priority and place in queue at end of new priority
 	curr->priority = PRIORITY_LEVELS-1;
 	curr->nxt = NULL;
-	if (queue[PRIORITY_LEVELS-1] == NULL)
-	{
-		queue[PRIORITY_LEVELS-1] = curr;
-	}else{
-		tcb *ptr = queue[PRIORITY_LEVELS-1];
-		while (ptr->nxt != NULL)
-		{
-			ptr = ptr->nxt;
-		}
-		ptr->nxt = curr;
-	}
 	swapcontext(&curr->context, &ctx_sched);
 	return;
 }
@@ -210,6 +206,9 @@ void maintenance()
 		queue[i]=NULL;
 	}
 	return;
+	//The assignment description says we're supposed to change priority 
+	//levels based on how long a thread has been running so older threads 
+	//can move up in priority. I don't really know how to do this though
 }
 
 void clean() //still need to setup context
@@ -444,23 +443,56 @@ int my_pthread_mutex_init(my_pthread_mutex_t *mutex, const pthread_mutexattr_t *
 		ptr->next = mutex;
 	}
 	mutex->locked = 0;
-	mutex->has = curr;
+	//mutex->has = curr;
 	mutex->next = NULL;
-	//I'm not sure if we are supposed to do anything with the attr. I think it is only included in here because if we are using code with regular pthread_mutes function calls then this parameter will be included. The fact that it does not say my_pthread_mutexattr_t leads me to believe that we can safely ignore this(?)
 	return 0;
 }
 
 /* aquire the mutex lock */
 int my_pthread_mutex_lock(my_pthread_mutex_t *mutex) 
 {
-	
+	while(__atomic_test_and_set(mutex, __ATOMIC_SEQ_CST) == 1)
+	{
+		//mutex already locked, change state to waiting
+		curr->state = 3;
+		//remove curr from ready queue
+		if (queue[curr->priority]->tid == curr->tid)
+		{
+			queue[curr->priority] = curr->nxt;
+		}else{
+			tcb *ptr, *prev;
+			ptr = queue[curr->priority];
+			while(ptr->nxt != NULL)
+			{
+				if (ptr->tid == curr->tid)
+				{
+					prev->nxt = ptr->nxt;
+					break;
+				}
+				prev = ptr;
+				ptr = ptr->nxt;
+			}
+		}
+		if(mutex->waiting == NULL)
+		{
+			mutex->waiting = curr;
+		}else{
+			tcb *ptr = mutex->waiting;
+			while(ptr->next != NULL)
+			{
+				ptr = ptr->next;
+			}
+			ptr->next = curr;
+		}
+		my_pthread_yield();
+	}
 	return 0;
-};
+}
 
 /* release the mutex lock */
 int my_pthread_mutex_unlock(my_pthread_mutex_t *mutex) {
 	return 0;
-};
+}
 
 /* destroy the mutex */
 int my_pthread_mutex_destroy(my_pthread_mutex_t *mutex) 

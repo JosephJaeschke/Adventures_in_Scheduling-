@@ -39,9 +39,8 @@ typedef struct threadControlBlock
 typedef struct my_pthread_mutex_t 
 {
 	int locked; //unlocked = 0; locked = 1; destroyed = 2;
-	tcb* has; //whoever first tried to get the locked lock
-	//has's nxt should be next in line for the lock and so on since it should
-	//not be in the run queue
+	tcb* waiting; //waiting queue of threads for this mutex, 
+	//first in waiting queue is first to run when mutex unlocked
 	struct my_pthread_mutex_t* next; //pointer to next mutex to create mutexList
 } my_pthread_mutex_t;
 
