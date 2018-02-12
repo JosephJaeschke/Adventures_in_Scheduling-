@@ -117,7 +117,7 @@ void alarm_handler(int signum)
 			ptr = ptr->nxt;
 		}
 	}
-	//update curr->priority and place in queue at end of new priority
+	//update curr->priority
 	curr->priority = PRIORITY_LEVELS-1;
 	curr->nxt = NULL;
 	swapcontext(&curr->context, &ctx_sched);
@@ -451,7 +451,7 @@ int my_pthread_mutex_init(my_pthread_mutex_t *mutex, const pthread_mutexattr_t *
 /* aquire the mutex lock */
 int my_pthread_mutex_lock(my_pthread_mutex_t *mutex) 
 {
-	while(__atomic_test_and_set(mutex, __ATOMIC_SEQ_CST) == 1)
+	while(__atomic_test_and_set(&mutex->locked, __ATOMIC_SEQ_CST) == 1)
 	{
 		//mutex already locked, change state to waiting
 		curr->state = 3;
@@ -473,16 +473,18 @@ int my_pthread_mutex_lock(my_pthread_mutex_t *mutex)
 				ptr = ptr->nxt;
 			}
 		}
+		
+		//place curr at the end of waiting queue for this mutex
 		if(mutex->waiting == NULL)
 		{
 			mutex->waiting = curr;
 		}else{
 			tcb *ptr = mutex->waiting;
-			while(ptr->next != NULL)
+			while(ptr->nxt != NULL)
 			{
-				ptr = ptr->next;
+				ptr = ptr->nxt;
 			}
-			ptr->next = curr;
+			ptr->nxt = curr;
 		}
 		my_pthread_yield();
 	}
@@ -490,18 +492,34 @@ int my_pthread_mutex_lock(my_pthread_mutex_t *mutex)
 }
 
 /* release the mutex lock */
-int my_pthread_mutex_unlock(my_pthread_mutex_t *mutex) {
+int my_pthread_mutex_unlock(my_pthread_mutex_t *mutex) 
+{
+	//double check that mutex is not already unlocked (just in case)
+	if(mutex->locked == 0)
+	{
+		printf("ERROR: Attempting to unlock UNLOCKE mutex\n");
+		return 1;
+	}
+
+	//update mutex_locked status and place next in waiting queue into ready queue
+	__atomic_clear(&mutex->locked, __ATOMIC_SEQ_CST);
+	tcb *ptr = mutex->waiting;
+	mutex->waiting = ptr->nxt;
+	queue[0] = ptr;	
 	return 0;
 }
 
 /* destroy the mutex */
 int my_pthread_mutex_destroy(my_pthread_mutex_t *mutex) 
 {
+	//cannot destroy a locked mutex
 	if (mutex->locked == 1)
 	{
 		printf("ERROR: Attempting to destroy LOCKED mutex\n");
 		return 1;
 	}
+
+	//change status to "destroyed" and remove from mutexList
 	mutex->locked = 2;
 	my_pthread_mutex_t *prev, *ptr;
 	ptr = mutexList;
