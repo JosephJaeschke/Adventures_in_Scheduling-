@@ -1,10 +1,11 @@
-// File:	my_pthread_t.h
+/*/ File:	my_pthread_t.h
 // Author:	Yujie REN
 // Date:	09/23/2017
 
 // name:
 // username of iLab:
 // iLab Server: 
+*/
 #ifndef MY_PTHREAD_T_H
 #define MY_PTHREAD_T_H
 
@@ -31,7 +32,7 @@ typedef struct threadControlBlock
 	//stack
 	int timeslice;
 	int priority;
-	int regPriority;
+	int oldPriority;
 	struct threadControlBlock* nxt;
 } tcb; 
 
@@ -40,9 +41,16 @@ typedef struct my_pthread_mutex_t
 {
 	int locked; //unlocked = 0; locked = 1; destroyed = 2;
 	tcb* waiting; //waiting queue of threads for this mutex, 
+	int maxP;
 	//first in waiting queue is first to run when mutex unlocked
 	struct my_pthread_mutex_t* next; //pointer to next mutex to create mutexList
 } my_pthread_mutex_t;
+
+typedef struct _package
+{
+	void* (*functionP)(void*);
+	void* argsP;
+}package;
 
 /* define your data structures here: */
 
@@ -53,7 +61,6 @@ my_pthread_mutex_t* mutexList;
 // Feel free to add your own auxiliary data structures
 /* Function Declarations: */
 
-void wrapper(void* (*func)(void*),void* args);
 void alarm_handler(int signum);
 void scheduler();
 void maintenance();

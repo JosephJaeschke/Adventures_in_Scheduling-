@@ -5,8 +5,8 @@
 // name:
 // username of iLab:
 // iLab Server:
+#define _XOPEN_SOURCE_EXTENDED 1
 
-//Hey, I did a thing
 #include "my_pthread_t.h"
 #include "ucontext.h"
 #include <stdlib.h>
@@ -20,7 +20,7 @@
 #define MAINTENANCE 10 //not sure a good value
 #define PRIORITY_LEVELS 5 //not sure good value
 
-short mode=0; //0 for SYS, 1 for USR?
+short mode=0; //0 for SYS, 1 for USR
 short ptinit=0; //init main stuff at first call of pthread_create
 short maintenanceCounter=MAINTENANCE;
 my_pthread_t idCounter=0;
@@ -71,11 +71,15 @@ typedef struct ucontext {
 } ucontext_t;
 */
 
-void wrapper(void* (*func)(void*),void* args)
+void wrapper(void*(*f)(void*),void* a)
 {
-	curr->retVal=(*func)(args);
+	printf("--start wrapping\n");
+	curr->retVal=(*f)(a);
+	printf("--done wrapping\n");
+	fflush(stdout);
 	if(curr->state!=4)
 	{
+		curr->retVal=malloc(1);
 		my_pthread_exit(curr->retVal);
 	}
 	return;
@@ -83,108 +87,117 @@ void wrapper(void* (*func)(void*),void* args)
 
 void alarm_handler(int signum)
 {
-	//i really think all this needs to do is go to the scheduler
-	//if you look at pthread_exit I accounted for the drop in priority
-	//maybe there is just something i am missing
-	//let me know if there is but i don't think so
-	//since the scheduler takes care of putting threads back and taking new ones out
-	if(mode==1)
+	printf("===ALARM=== (mode=%d)\n",mode);
+	fflush(stdout);
+	if(mode==0)
 	{
+		printf("--sys\n");
 		return;
 	}
-	//The signal handler is activated when a thread has run for the full 
-	//duration of itimerval. This does not mean that the thread is completed 
-	//and ready for exit. For the cases where the thread is not terminated 
-	//but instead placed back into the priority queue, it needs to update 
-	//the priority level here. We will also need to move it to the correct 
-	//priority spot in the queue in here.
-	
-	//remove curr from queue at old priority level
-	if (queue[curr->priority]->tid == curr->tid)
+	printf("--usr\n");
+	//i put the stuff in sched. I hope it is not too slow, but it was better for debugging
+	if(swapcontext(&curr->context, &ctx_sched)==-1)
 	{
-		queue[curr->priority] = curr->nxt;
-	}else{
-		tcb *ptr, *prev;
-		ptr = queue[curr->priority];
-		while(ptr->nxt != NULL)
-		{
-			if (ptr->tid == curr->tid)
-			{
-				prev->nxt = ptr->nxt;
-				break;
-			}
-			prev = ptr;
-			ptr = ptr->nxt;
-		}
+		printf("ERROR: Failed to swap to sched\n");
+		fflush(stdout);
 	}
-	//update curr->priority
-	curr->priority = PRIORITY_LEVELS-1;
-	curr->nxt = NULL;
-	swapcontext(&curr->context, &ctx_sched);
 	return;
 }
 
 void scheduler()
 {
-	mode=1;
-	int i,found=0;
-	tcb* ptr;
-	curr->state=1;
-	if(curr->priority<PRIORITY_LEVELS-1)
+	while(1)
 	{
-		curr->priority++;
-	}
-	//put old thread back in queue
-	if(queue[curr->priority]==NULL)
-	{
-		queue[curr->priority]=curr;
-	}
-	else
-	{
-		tcb* temp=queue[curr->priority];
-		while(temp->nxt!=NULL)
+		mode=0;
+		printf("--sched\n");
+		fflush(stdout);
+		//remove curr from queue at old priority level
+		if(queue[curr->oldPriority]->tid == curr->tid)//i think it will always be this
 		{
-			temp=temp->nxt;
+			queue[curr->oldPriority]=queue[curr->oldPriority]->nxt;
 		}
-		temp->nxt=curr;
-	}
-	maintenanceCounter--;
-	if(maintenanceCounter<=0)
-	{
-		maintenanceCounter=MAINTENANCE;
-		maintenance();
-	}
-	//try to find a thread that can be run
-	for(i=0;i<PRIORITY_LEVELS;i++)
-	{
-		ptr=queue[i];
-		while(ptr!=NULL)
+		else
 		{
-			if(ptr->state==1)
+			printf("--else\n");
+			fflush(stdout);
+			tcb *ptr, *prev;
+			ptr = queue[curr->oldPriority];
+			while(ptr != NULL)
 			{
-				ptr->state=2;
-				curr=ptr;
-				found=1;
+				printf("--\n");
+				fflush(stdout);
+				if (ptr->tid == curr->tid)
+				{
+					prev->nxt = ptr->nxt;
+					break;
+				}
+				prev = ptr;
+				ptr = ptr->nxt;
+			}
+		}
+		printf("--removed old priority\n");
+		fflush(stdout);
+		if(curr->priority<PRIORITY_LEVELS)
+		{
+			curr->priority++;
+		}
+		curr->oldPriority=curr->priority;
+		int i,found=0;
+		tcb* ptr;
+		curr->state=1;
+		//put old thread back in queue
+		if(queue[curr->priority]==NULL)
+		{
+			queue[curr->priority]=curr;
+		}
+		else
+		{
+			tcb* temp=queue[curr->priority];
+			while(temp->nxt!=NULL)
+			{
+				temp=temp->nxt;
+			}
+			temp->nxt=curr;
+		}
+//		maintenanceCounter--;
+//		if(maintenanceCounter<=0)
+//		{
+//			maintenanceCounter=MAINTENANCE;
+//			maintenance();
+//		}
+		//try to find a thread that can be run
+		for(i=0;i<PRIORITY_LEVELS;i++)
+		{
+			ptr=queue[i];
+			while(ptr!=NULL)
+			{
+				if(ptr->state==1)
+				{
+					ptr->state=2;
+					curr=ptr;
+					found=1;
+					break;
+				}
+				ptr=ptr->nxt;
+			}
+			if(found)
+			{
+				printf("--run thread w/ id=%u p=%d\n",curr->tid,curr->priority);
 				break;
 			}
-			ptr=ptr->nxt;
 		}
-		if(found)
+		//if there is no thread that can run
+		if(!found)
 		{
-			break;
+			printf("--Found no thread ready to run\n");
+			return;
 		}
+		timer.it_value.tv_sec=0;
+		timer.it_value.tv_usec=(curr->priority+1)*25000;
+		setitimer(ITIMER_REAL,&timer,NULL);
+		mode=1;
+		swapcontext(&ctx_sched,&curr->context);
 	}
-	//if there is no thread that can run
-	if(!found)
-	{
-		printf("Found no thread ready to run\n");
-		return;
-	}
-	timer.it_value.tv_sec=0;
-	timer.it_value.tv_usec=(curr->priority+1)*25000;
-	getitimer(ITIMER_REAL,&timer); //make sure this works right
-	mode=0;
-	swapcontext(&ctx_sched,&curr->context);
 	return;
 }
 
@@ -225,8 +238,8 @@ int my_pthread_create(my_pthread_t* thread, pthread_attr_t* attr, void*(*functio
 	{
 		//init stuff
 		//set up main thread/context
-		queue=malloc(PRIORITY_LEVELS*sizeof(tcb*));
-		terminating=malloc(MAX_THREAD*sizeof(tcb*));
+		queue=malloc(PRIORITY_LEVELS*sizeof(tcb));
+		terminating=malloc(sizeof(tcb));
 		int i=0;
 		for(i;i<PRIORITY_LEVELS;i++)
 		{
@@ -237,24 +250,25 @@ int my_pthread_create(my_pthread_t* thread, pthread_attr_t* attr, void*(*functio
 			printf("ERROR: Failed to get context for main\n");
 			return 1;
 		}
-		tcb* maint=malloc(sizeof(tcb*));
+		tcb* maint=malloc(sizeof(tcb));
 		maint->state=0;
 		maint->tid=idCounter++;
 		maint->context=ctx_main;
 		maint->retVal=NULL;
 		maint->priority=0;
+		maint->oldPriority=0;
 		maint->nxt=NULL;
 		maint->state=1;
 		curr=maint;
-
-		/*
+		queue[0]=maint;
+		printf("--Got main context\n");
 		//set up context for cleanup
-		if(getcontext(&ctx_clean)==-1)
-		{
-			printf("ERROR: Failed to get context for cleanup\n");
-			return;
-		}
-		*/
+//		if(getcontext(&ctx_clean)==-1)
+//		{
+//			printf("ERROR: Failed to get context for cleanup\n");
+//			return 1;
+//		}
+//		makecontext(&ctx_clean,clean,0);
 
 		//set up scheduler thread/context
 		if(getcontext(&ctx_sched)==-1)
@@ -262,7 +276,7 @@ int my_pthread_create(my_pthread_t* thread, pthread_attr_t* attr, void*(*functio
 			printf("ERROR: Failed to get context for scheduler\n");
 			return 1;
 		}
-		ctx_sched.uc_link=&ctx_clean;
+		ctx_sched.uc_link=0;
 		ctx_sched.uc_stack.ss_sp=malloc(MAX_STACK);
 		ctx_sched.uc_stack.ss_size=MAX_STACK;
 		/*
@@ -278,13 +292,14 @@ int my_pthread_create(my_pthread_t* thread, pthread_attr_t* attr, void*(*functio
 		schedt->state=1;
 		*/
 		makecontext(&ctx_sched,scheduler,0);
+		printf("--Got context for scheduler\n");
 
 		//set first timer
 		signal(SIGALRM,alarm_handler);
-		timer.it_value.tv_sec=0;
-		timer.it_value.tv_usec=25;
-		getitimer(ITIMER_REAL,&timer);
-
+		timer.it_value.tv_sec=0;	
+		timer.it_value.tv_usec=25000; 
+		setitimer(ITIMER_REAL,&timer,NULL);
+		printf("--timer set\n");
 		ptinit=1;
 	}
 	if(activeThreads==MAX_THREAD)
@@ -298,18 +313,24 @@ int my_pthread_create(my_pthread_t* thread, pthread_attr_t* attr, void*(*functio
 		printf("ERROR: Failed to get context for new thread\n");
 		return 1;
 	}
-	ctx_func.uc_link=&ctx_main;
+	ctx_func.uc_link=&curr->context;  //i think ************************
 	ctx_func.uc_stack.ss_sp=malloc(MAX_STACK);
 	ctx_func.uc_stack.ss_size=MAX_STACK;
-	tcb* t=malloc(sizeof(tcb*));
+	tcb* t=malloc(sizeof(tcb));
 	t->state=0;
 	t->tid=idCounter++;
+	*thread=t->tid;
 	t->context=ctx_func;
 	t->retVal=NULL;
 	t->priority=0;
+	t->oldPriority=0;
 	t->nxt=NULL;
 	t->state=1;
-	makecontext(&t->context,function(arg),1,&arg); //i don't know about second param***********
+//	package* p=malloc(sizeof(package*));
+//	p->functionP=function;
+//	p->argsP=arg;
+//	void* warg=(void*)p;
+	makecontext(&t->context,wrapper,2,function,arg);
 	if(queue[0]==NULL)
 	{
 		queue[0]=t;
@@ -323,6 +344,7 @@ int my_pthread_create(my_pthread_t* thread, pthread_attr_t* attr, void*(*functio
 		}
 		ptr->nxt=t;
 	}
+	printf("--added to queue, id %u\n",t->tid);
 	activeThreads++;
 	return 0;
 }
@@ -330,6 +352,8 @@ int my_pthread_create(my_pthread_t* thread, pthread_attr_t* attr, void*(*functio
 /* give CPU pocession to other user level threads voluntarily */
 int my_pthread_yield()
 {
+	printf("--yield\n");
+	fflush(stdout);
 	curr->priority = PRIORITY_LEVELS-2;
 	swapcontext(&curr->context,&ctx_sched);
 	return 0;
@@ -338,9 +362,11 @@ int my_pthread_yield()
 /* terminate a thread */
 void my_pthread_exit(void* value_ptr)
 {
+	printf("--exit\n");
+	fflush(stdout);
 	if(value_ptr==NULL)
 	{
-		printf("value_ptr is NULL\n");
+		printf("--value_ptr is NULL\n");
 		return;
 	}
 	//mark thread as terminating
@@ -388,44 +414,54 @@ void my_pthread_exit(void* value_ptr)
 /* wait for thread termination */
 int my_pthread_join(my_pthread_t thread, void **value_ptr)
 {
+	printf("--join\n");
+	/*
 	if(value_ptr==NULL)
 	{
 		printf("value_ptr is NULL\n");
 		return 1;
 	}
+	*/
 	//mark thread as waiting
 	curr->state=3;
 	//look for "thread" in terminating list
-	tcb* ptr=terminating;
-	if(terminating->tid==thread)
+	while(1)
 	{
-		value_ptr=ptr->retVal;
-		terminating=terminating->nxt;
-		free(ptr);
-		activeThreads--;
-		curr->state=1;
+		if(terminating==NULL)
+		{
+			continue;
+		}
+		else if(terminating->tid==thread)//thread is first in list
+		{
+			value_ptr=terminating->retVal;
+			terminating=terminating->nxt;
+			free(terminating);
+			activeThreads--;
+			curr->state=1;
+			return 0;
+		}
+		else//thread is not first in list
+		{
+			tcb* ptr=terminating;
+			tcb* prev=ptr;
+			ptr=ptr->nxt;
+			while(ptr!=NULL)
+			{
+				if(ptr->tid==thread)
+				{
+					prev->nxt=ptr->nxt;
+					value_ptr=ptr->retVal; //not too sure about this (pointer stuff)
+					free(ptr);
+					activeThreads--;
+					return 0;
+				}
+				ptr=ptr->nxt;
+			}
+		}
+		my_pthread_yield();
 		return 0;
 	}
-	else
-	{
-		tcb* prev=ptr;
-		ptr=ptr->nxt;
-		while(1)
-		{
-			if(ptr->tid==thread)
-			{
-				value_ptr=ptr->retVal; //not too sure about this (pointer stuff)
-				free(ptr);
-				activeThreads--;
-				return 0;
-			}
-			ptr=ptr->nxt;
-		}
-	}
-	my_pthread_yield();
-	return 0;
 }
-
 /* initial the mutex lock */
 int my_pthread_mutex_init(my_pthread_mutex_t *mutex, const pthread_mutexattr_t *mutexattr) 
 {
@@ -443,6 +479,7 @@ int my_pthread_mutex_init(my_pthread_mutex_t *mutex, const pthread_mutexattr_t *
 		ptr->next = mutex;
 	}
 	mutex->locked = 0;
+	mutex->maxP=PRIORITY_LEVELS;
 	//mutex->has = curr;
 	mutex->next = NULL;
 	return 0;
@@ -506,7 +543,7 @@ int my_pthread_mutex_unlock(my_pthread_mutex_t *mutex)
 	tcb *ptr = mutex->waiting;
 	mutex->waiting = ptr->nxt;
 	ptr->state = 1; //change state to ready
-	queue[0] = ptr;	
+	queue[0] = ptr;	//need to properly add
 	return 0;
 }
 
