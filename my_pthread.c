@@ -87,14 +87,12 @@ void wrapper(void*(*f)(void*),void* a)
 
 void alarm_handler(int signum)
 {
-	printf("===ALARM=== (mode=%d)\n",mode);
+//	printf("===ALARM=== (mode=%d)\n",mode);
 	fflush(stdout);
 	if(mode==0)
 	{
-		printf("--sys\n");
 		return;
 	}
-	printf("--usr\n");
 	//i put the stuff in sched. I hope it is not too slow, but it was better for debugging
 	if(swapcontext(&curr->context, &ctx_sched)==-1)
 	{
@@ -109,24 +107,24 @@ void scheduler()
 	while(1)
 	{
 		mode=0;
-		printf("--sched\n");
+		printf("--sched | p=%u, op=%u\n",curr->priority,queue[curr->oldPriority]->tid);
 		fflush(stdout);
 		//remove curr from queue at old priority level
-		if(queue[curr->oldPriority]->tid == curr->tid)//i think it will always be this
+		if(queue[curr->oldPriority]->tid == curr->tid)
 		{
+			printf("--i\n");
+			fflush(stdout);
 			queue[curr->oldPriority]=queue[curr->oldPriority]->nxt;
 		}
 		else
 		{
-			printf("--else\n");
+			printf("--e\n");
 			fflush(stdout);
 			tcb *ptr, *prev;
 			ptr = queue[curr->oldPriority];
-			while(ptr != NULL)
+			while(ptr->nxt != NULL)
 			{
-				printf("--\n");
-				fflush(stdout);
-				if (ptr->tid == curr->tid)
+				if(ptr->tid == curr->tid)
 				{
 					prev->nxt = ptr->nxt;
 					break;
@@ -135,26 +133,32 @@ void scheduler()
 				ptr = ptr->nxt;
 			}
 		}
-		printf("--removed old priority\n");
-		fflush(stdout);
-		if(curr->priority<PRIORITY_LEVELS)
+		printf("---1\n");
+		if(curr->priority<PRIORITY_LEVELS-1)//////////////////////////////
 		{
 			curr->priority++;
 		}
-		curr->oldPriority=curr->priority;
+		curr->oldPriority=curr->priority;///////////////////////////////
 		int i,found=0;
 		tcb* ptr;
 		curr->state=1;
+		printf("---2\n");//before this
 		//put old thread back in queue
-		if(queue[curr->priority]==NULL)
+		curr->nxt=NULL;
+		if(queue[curr->priority]==NULL)//if empty
 		{
+			printf("a\n");
+			fflush(stdout);
 			queue[curr->priority]=curr;
 		}
 		else
 		{
+			printf("b\n");
 			tcb* temp=queue[curr->priority];
 			while(temp->nxt!=NULL)
 			{
+				printf("b %u\n",curr->priority);
+				fflush(stdout);
 				temp=temp->nxt;
 			}
 			temp->nxt=curr;
@@ -189,12 +193,13 @@ void scheduler()
 		//if there is no thread that can run
 		if(!found)
 		{
-			printf("--Found no thread ready to run\n");
+//			printf("--Found no thread ready to run\n");
 			return;
 		}
 		timer.it_value.tv_sec=0;
 		timer.it_value.tv_usec=(curr->priority+1)*25000;
 		setitimer(ITIMER_REAL,&timer,NULL);
+		printf("===\n");
 		mode=1;
 		swapcontext(&ctx_sched,&curr->context);
 	}
@@ -261,7 +266,7 @@ int my_pthread_create(my_pthread_t* thread, pthread_attr_t* attr, void*(*functio
 		maint->state=1;
 		curr=maint;
 		queue[0]=maint;
-		printf("--Got main context\n");
+//		printf("--Got main context\n");
 		//set up context for cleanup
 //		if(getcontext(&ctx_clean)==-1)
 //		{
@@ -292,14 +297,14 @@ int my_pthread_create(my_pthread_t* thread, pthread_attr_t* attr, void*(*functio
 		schedt->state=1;
 		*/
 		makecontext(&ctx_sched,scheduler,0);
-		printf("--Got context for scheduler\n");
+//		printf("--Got context for scheduler\n");
 
 		//set first timer
 		signal(SIGALRM,alarm_handler);
 		timer.it_value.tv_sec=0;	
 		timer.it_value.tv_usec=25000; 
 		setitimer(ITIMER_REAL,&timer,NULL);
-		printf("--timer set\n");
+//		printf("--timer set\n");
 		ptinit=1;
 	}
 	if(activeThreads==MAX_THREAD)
@@ -344,7 +349,7 @@ int my_pthread_create(my_pthread_t* thread, pthread_attr_t* attr, void*(*functio
 		}
 		ptr->nxt=t;
 	}
-	printf("--added to queue, id %u\n",t->tid);
+//	printf("--added to queue, id %u\n",t->tid);
 	activeThreads++;
 	return 0;
 }
@@ -354,9 +359,8 @@ int my_pthread_yield()
 {
 	printf("--yield\n");
 	fflush(stdout);
-	curr->priority = PRIORITY_LEVELS-2;
+	curr->priority = PRIORITY_LEVELS-1;
 	swapcontext(&curr->context,&ctx_sched);
-	return 0;
 }
 
 /* terminate a thread */
@@ -366,7 +370,7 @@ void my_pthread_exit(void* value_ptr)
 	fflush(stdout);
 	if(value_ptr==NULL)
 	{
-		printf("--value_ptr is NULL\n");
+		printf("ERROR: value_ptr is NULL\n");
 		return;
 	}
 	//mark thread as terminating
@@ -433,6 +437,7 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr)
 		}
 		else if(terminating->tid==thread)//thread is first in list
 		{
+			printf("%u joining w/ %u\n",curr->tid,terminating->tid);
 			value_ptr=terminating->retVal;
 			terminating=terminating->nxt;
 			free(terminating);
@@ -449,6 +454,7 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr)
 			{
 				if(ptr->tid==thread)
 				{
+					printf("%u joining w/ %u\n",curr->tid,ptr->tid);
 					prev->nxt=ptr->nxt;
 					value_ptr=ptr->retVal; //not too sure about this (pointer stuff)
 					free(ptr);
@@ -459,8 +465,8 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr)
 			}
 		}
 		my_pthread_yield();
-		return 0;
 	}
+	return 0;
 }
 /* initial the mutex lock */
 int my_pthread_mutex_init(my_pthread_mutex_t *mutex, const pthread_mutexattr_t *mutexattr) 

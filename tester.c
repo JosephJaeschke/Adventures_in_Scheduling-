@@ -4,10 +4,11 @@ void* fun()
 {
 	printf("In fun\n");
 	int i=0;
-	while(i<9999999999)
+	while(i<99999)
 	{
 		i=i+1;
 	}
+	printf("done being busy\n");
 }
 
 int main()
