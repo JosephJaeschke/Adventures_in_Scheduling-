@@ -73,10 +73,10 @@ typedef struct ucontext {
 
 void wrapper(void*(*f)(void*),void* a)
 {
-	printf("--start wrapping\n");
+//	printf("--start wrapping\n");
 	curr->retVal=(*f)(a);
-	printf("--done wrapping\n");
-	fflush(stdout);
+//	printf("--done wrapping\n");
+//	fflush(stdout);
 	if(curr->state!=4)
 	{
 		curr->retVal=malloc(1);
@@ -107,21 +107,17 @@ void scheduler()
 	while(1)
 	{
 		mode=0;
-		printf("--sched | p=%u, op=%u\n",curr->priority,curr->oldPriority);
-		fflush(stdout);
+//		printf("--sched | p=%u, op=%u\n",curr->priority,curr->oldPriority);
+//		fflush(stdout);
 		//remove curr from queue at old priority level
 		if(curr->state!=4)
 		{
 			if(queue[curr->oldPriority]->tid == curr->tid)
 			{
-				printf("--e\n");
-				fflush(stdout);
 				queue[curr->oldPriority]=queue[curr->oldPriority]->nxt;
 			}
 			else
 			{
-				printf("--e\n");
-				fflush(stdout);
 				tcb *ptr, *prev;
 				ptr = queue[curr->oldPriority];
 				while(ptr->nxt != NULL)
@@ -135,7 +131,6 @@ void scheduler()
 					ptr = ptr->nxt;
 				}
 			}
-			printf("---1\n");
 			if(curr->priority<PRIORITY_LEVELS-1)//////////////////////////////
 			{
 				curr->priority++;
@@ -145,18 +140,13 @@ void scheduler()
 			curr->nxt=NULL;
 			if(queue[curr->priority]==NULL)//if empty
 			{
-				printf("a\n");
-				fflush(stdout);
 				queue[curr->priority]=curr;
 			}
 			else
 			{
-				printf("b\n");
 				tcb* temp=queue[curr->priority];
 				while(temp->nxt!=NULL)
 				{
-					printf("b %u\n",curr->priority);
-					fflush(stdout);
 					temp=temp->nxt;
 				}
 				temp->nxt=curr;
@@ -188,7 +178,7 @@ void scheduler()
 			}
 			if(found)
 			{
-				printf("--run thread w/ id=%u p=%d\n",curr->tid,curr->priority);
+//				printf("--run thread w/ id=%u p=%d\n",curr->tid,curr->priority);
 				break;
 			}
 		}
@@ -201,7 +191,6 @@ void scheduler()
 		timer.it_value.tv_sec=0;
 		timer.it_value.tv_usec=(curr->priority+1)*25000;
 		setitimer(ITIMER_REAL,&timer,NULL);
-		printf("===\n");
 		mode=1;
 		swapcontext(&ctx_sched,&curr->context);
 	}
@@ -359,8 +348,8 @@ int my_pthread_create(my_pthread_t* thread, pthread_attr_t* attr, void*(*functio
 /* give CPU pocession to other user level threads voluntarily */
 int my_pthread_yield()
 {
-	printf("--yield\n");
-	fflush(stdout);
+//	printf("--yield\n");
+//	fflush(stdout);
 	curr->priority = PRIORITY_LEVELS-1;
 	swapcontext(&curr->context,&ctx_sched);
 }
@@ -368,8 +357,8 @@ int my_pthread_yield()
 /* terminate a thread */
 void my_pthread_exit(void* value_ptr)
 {
-	printf("--exit\n");
-	fflush(stdout);
+//	printf("--exit\n");
+//	fflush(stdout);
 	if(value_ptr==NULL)
 	{
 		printf("ERROR: value_ptr is NULL\n");
@@ -420,7 +409,7 @@ void my_pthread_exit(void* value_ptr)
 /* wait for thread termination */
 int my_pthread_join(my_pthread_t thread, void **value_ptr)
 {
-	printf("--join\n");
+//	printf("--join\n");
 	/*
 	if(value_ptr==NULL)
 	{
@@ -439,7 +428,7 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr)
 		}
 		else if(terminating->tid==thread)//thread is first in list
 		{
-			printf("%u joining w/ %u\n",curr->tid,terminating->tid);
+//			printf("--%u joining w/ %u\n",curr->tid,terminating->tid);
 			value_ptr=terminating->retVal;
 			terminating=terminating->nxt;
 			free(terminating);
@@ -456,7 +445,7 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr)
 			{
 				if(ptr->tid==thread)
 				{
-					printf("%u joining w/ %u\n",curr->tid,ptr->tid);
+//					printf("--%u joining w/ %u\n",curr->tid,ptr->tid);
 					prev->nxt=ptr->nxt;
 					value_ptr=ptr->retVal; //not too sure about this (pointer stuff)
 					free(ptr);
