@@ -20,6 +20,12 @@
 #define MAINTENANCE 10 //not sure a good value
 #define PRIORITY_LEVELS 5 //not sure good value
 
+#define pthread_t my_pthread_t
+#define pthread_create my_pthread_create
+#define pthread_join my_pthread_join
+#define pthread_exit my_pthread_exit
+#define pthread_yield my_pthread_yield
+
 short mode=0; //0 for SYS, 1 for USR
 short ptinit=0; //init main stuff at first call of pthread_create
 short maintenanceCounter=MAINTENANCE;
