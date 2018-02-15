@@ -107,62 +107,64 @@ void scheduler()
 	while(1)
 	{
 		mode=0;
-		printf("--sched | p=%u, op=%u\n",curr->priority,queue[curr->oldPriority]->tid);
+		printf("--sched | p=%u, op=%u\n",curr->priority,curr->oldPriority);
 		fflush(stdout);
 		//remove curr from queue at old priority level
-		if(queue[curr->oldPriority]->tid == curr->tid)
+		if(curr->state!=4)
 		{
-			printf("--i\n");
-			fflush(stdout);
-			queue[curr->oldPriority]=queue[curr->oldPriority]->nxt;
-		}
-		else
-		{
-			printf("--e\n");
-			fflush(stdout);
-			tcb *ptr, *prev;
-			ptr = queue[curr->oldPriority];
-			while(ptr->nxt != NULL)
+			if(queue[curr->oldPriority]->tid == curr->tid)
 			{
-				if(ptr->tid == curr->tid)
+				printf("--e\n");
+				fflush(stdout);
+				queue[curr->oldPriority]=queue[curr->oldPriority]->nxt;
+			}
+			else
+			{
+				printf("--e\n");
+				fflush(stdout);
+				tcb *ptr, *prev;
+				ptr = queue[curr->oldPriority];
+				while(ptr->nxt != NULL)
 				{
-					prev->nxt = ptr->nxt;
-					break;
+					if(ptr->tid == curr->tid)
+					{
+						prev->nxt = ptr->nxt;
+						break;
+					}
+					prev = ptr;
+					ptr = ptr->nxt;
 				}
-				prev = ptr;
-				ptr = ptr->nxt;
+			}
+			printf("---1\n");
+			if(curr->priority<PRIORITY_LEVELS-1)//////////////////////////////
+			{
+				curr->priority++;
+			}
+			curr->oldPriority=curr->priority;///////////////////////////////
+			//put old thread back in queue
+			curr->nxt=NULL;
+			if(queue[curr->priority]==NULL)//if empty
+			{
+				printf("a\n");
+				fflush(stdout);
+				queue[curr->priority]=curr;
+			}
+			else
+			{
+				printf("b\n");
+				tcb* temp=queue[curr->priority];
+				while(temp->nxt!=NULL)
+				{
+					printf("b %u\n",curr->priority);
+					fflush(stdout);
+					temp=temp->nxt;
+				}
+				temp->nxt=curr;
 			}
 		}
-		printf("---1\n");
-		if(curr->priority<PRIORITY_LEVELS-1)//////////////////////////////
-		{
-			curr->priority++;
-		}
-		curr->oldPriority=curr->priority;///////////////////////////////
 		int i,found=0;
 		tcb* ptr;
 		curr->state=1;
-		printf("---2\n");//before this
-		//put old thread back in queue
-		curr->nxt=NULL;
-		if(queue[curr->priority]==NULL)//if empty
-		{
-			printf("a\n");
-			fflush(stdout);
-			queue[curr->priority]=curr;
-		}
-		else
-		{
-			printf("b\n");
-			tcb* temp=queue[curr->priority];
-			while(temp->nxt!=NULL)
-			{
-				printf("b %u\n",curr->priority);
-				fflush(stdout);
-				temp=temp->nxt;
-			}
-			temp->nxt=curr;
-		}
 //		maintenanceCounter--;
 //		if(maintenanceCounter<=0)
 //		{
