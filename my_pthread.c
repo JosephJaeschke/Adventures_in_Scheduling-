@@ -89,6 +89,9 @@ void wrapper(int f1,int f2,int a1,int a2)
 
 	void* a=(void*)p->data;
 	void*(*f)(void*)=(void*(*)(void*))s->data;
+
+	free(p);
+	free(s);
 	
 	printf("--start wrapping\n");
 	curr->retVal=(*f)(a);
@@ -368,7 +371,7 @@ int my_pthread_create(my_pthread_t* thread, pthread_attr_t* attr, void*(*functio
 	mask* subroutine=malloc(sizeof(mask));
 	subroutine->data=function;
 
-	makecontext(&t->context,wrapper,4,subroutine->halfs.hhalf,subroutine->halfs.lhalf,params->halfs.hhalf,params->halfs.lhalf);
+	makecontext(&t->context,(void(*)(void))wrapper,4,subroutine->halfs.hhalf,subroutine->halfs.lhalf,params->halfs.hhalf,params->halfs.lhalf);
 
 	free(params);
 	free(subroutine);
