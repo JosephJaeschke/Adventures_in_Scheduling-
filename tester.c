@@ -1,14 +1,18 @@
 #include "my_pthread.c"
-/*
+
 void* fun()
 {
 	printf("In fun\n");
-	int i=0;
-	while(i<99999)
-	{
-		i=i+1;
-	}
-	printf("done being busy\n");
+	int a=4;
+	int* ret=&a;
+	*ret=4;
+	pthread_exit((void*)ret);
+//	int i=0;
+//	while(i<999999999)
+//	{
+//		i=i+1;
+//	}
+//	printf("done being busy\n");
 }
 
 int main()
@@ -16,24 +20,26 @@ int main()
 	pthread_t tid;
 	printf("start thread stuff\n");
 	pthread_create(&tid,NULL,fun,NULL);
-	void** ahhh=malloc(100);
-	pthread_join(tid,ahhh);
-	printf("WE DONE!!!\n");
+	void** v=malloc(sizeof(int));
+	pthread_join(tid,v);
+	printf("answer: ");
+	fflush(stdout);
+	printf("%d\n",**(int**)v);
+	printf("DONE!!!\n");
 	return 0;
 }
-*/
-
-/* this function is run by the second thread */
+/*
+//// this function is run by the second thread 
 void *inc_x(void *x_void_ptr)
 {
 
-	/* increment x to 100 */
+//	* increment x to 100 
 	int *x_ptr = (int *)x_void_ptr;
 	while(++(*x_ptr) < 100);
 
 	printf("x increment finished\n");
 
-	/* the function must return something - NULL will do */
+//	* the function must return something - NULL will do 
 	return NULL;
 
 }
@@ -41,27 +47,27 @@ void *inc_x(void *x_void_ptr)
 int main()
 {
 
-	int x = 0, y = 0;
+	int x = 3, y = 0;
 
-	/* show the initial values of x and y */
+	// show the initial values of x and y 
 	printf("x: %d, y: %d\n", x, y);
 
-	/* this variable is our reference to the second thread */
+	// this variable is our reference to the second thread 
 	pthread_t inc_x_thread;
 
-	/* create a second thread which executes inc_x(&x) */
+	// create a second thread which executes inc_x(&x) 
 	if(pthread_create(&inc_x_thread, NULL, inc_x, &x)) {
 
 		fprintf(stderr, "Error creating thread\n");
 		return 1;
 
 	}
-	/* increment y to 100 in the first thread */
+	// increment y to 100 in the first thread 
 	while(++y < 100);
 
 	printf("y increment finished\n");
 
-	/* wait for the second thread to finish */
+	// wait for the second thread to finish 
 	if(pthread_join(inc_x_thread, NULL)) {
 
 		fprintf(stderr, "Error joining thread\n");
@@ -69,9 +75,10 @@ int main()
 
 	}
 
-	/* show the results - x is now 100 thanks to the second thread */
+	// show the results - x is now 100 thanks to the second thread 
 	printf("x: %d, y: %d\n", x, y);
 
 	return 0;
 
 }
+*/

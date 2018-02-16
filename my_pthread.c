@@ -5,7 +5,6 @@
 // name:
 // username of iLab:
 // iLab Server:
-#define _XOPEN_SOURCE_EXTENDED 1
 
 #include "my_pthread_t.h"
 #include "ucontext.h"
@@ -34,8 +33,6 @@ int activeThreads=0;
 ucontext_t ctx_main, ctx_sched,ctx_clean;
 tcb* curr;
 struct itimerval timer;
-struct sigaction sa;
-
 
 /*
 ucontext
@@ -94,7 +91,7 @@ void wrapper(void*(*f)(void*),void* a)
 void alarm_handler(int signum)
 {
 //	printf("===ALARM=== (mode=%d)\n",mode);
-	fflush(stdout);
+//	fflush(stdout);
 	if(mode==0)
 	{
 		return;
@@ -110,9 +107,13 @@ void alarm_handler(int signum)
 
 void scheduler()
 {
+	//put remove thread stuff in because of mutex
 	while(1)
 	{
 		mode=0;
+		printf("-sched\n");
+//		printf("--tid:%u op:%d\n",curr->tid,curr->oldPriority);
+//		printf("--tid2:%u\n",queue[curr->oldPriority]->tid);
 //		printf("--sched | p=%u, op=%u\n",curr->priority,curr->oldPriority);
 //		fflush(stdout);
 		//remove curr from queue at old priority level
@@ -162,7 +163,7 @@ void scheduler()
 		tcb* ptr;
 		curr->state=1;
 //		maintenanceCounter--;
-//		if(maintenanceCounter<=0)
+//		if(maintenanceCounter==0)
 //		{
 //			maintenanceCounter=MAINTENANCE;
 //			maintenance();
@@ -184,14 +185,14 @@ void scheduler()
 			}
 			if(found)
 			{
-//				printf("--run thread w/ id=%u p=%d\n",curr->tid,curr->priority);
+			//	printf("\n--run thread w/ id=%u p=%d op=%d\n",curr->tid,curr->priority,curr->oldPriority);
 				break;
 			}
 		}
 		//if there is no thread that can run
 		if(!found)
 		{
-//			printf("--Found no thread ready to run\n");
+			printf("--Found no thread ready to run\n");
 			return;
 		}
 		timer.it_value.tv_sec=0;
@@ -205,25 +206,38 @@ void scheduler()
 
 void maintenance()
 {
-	//address priority inversion (priority inheritence or ceiling
-	//give all threads priority 0 to prevent starvation. (does this fix priority inversion?)
+	printf("--mmmmmmmmmmmmmmmmmmmmmmmmmmm\n");
+	//give all threads priority 0 to prevent starvation
 	int i;
-	tcb* top=queue[0];
-	//put everything in first level (i think the book did something like this)
+	tcb* new=malloc(sizeof(tcb));
+	tcb* head=new;
+	new=queue[0];
+	while(new!=NULL&&new->nxt!=NULL)
+	{
+		new=new->nxt;
+	}
 	for(i=1;i<PRIORITY_LEVELS;i++)
 	{
-		while(top->nxt!=NULL)
+		if(new==NULL)
 		{
-			top=top->nxt;
-			top->priority=0;
+			new=queue[i];
 		}
-		top->nxt=queue[i];
+		else
+		{
+			new->nxt=queue[i];
+			new=new->nxt;
+		}
+		while(new!=NULL&&new->nxt!=NULL)
+		{
+			new->priority=0;
+			new->oldPriority=0;
+			new=new->nxt;
+		}
 		queue[i]=NULL;
 	}
+	queue[0]=head;
+	free(new);
 	return;
-	//The assignment description says we're supposed to change priority 
-	//levels based on how long a thread has been running so older threads 
-	//can move up in priority. I don't really know how to do this though
 }
 
 void clean() //still need to setup context
@@ -363,8 +377,8 @@ int my_pthread_yield()
 /* terminate a thread */
 void my_pthread_exit(void* value_ptr)
 {
-//	printf("--exit\n");
-//	fflush(stdout);
+	printf("--exit\n");
+	fflush(stdout);
 	if(value_ptr==NULL)
 	{
 		printf("ERROR: value_ptr is NULL\n");
@@ -415,14 +429,7 @@ void my_pthread_exit(void* value_ptr)
 /* wait for thread termination */
 int my_pthread_join(my_pthread_t thread, void **value_ptr)
 {
-//	printf("--join\n");
-	/*
-	if(value_ptr==NULL)
-	{
-		printf("value_ptr is NULL\n");
-		return 1;
-	}
-	*/
+	printf("--join\n");
 	//mark thread as waiting
 	curr->state=3;
 	//look for "thread" in terminating list
@@ -434,8 +441,14 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr)
 		}
 		else if(terminating->tid==thread)//thread is first in list
 		{
-//			printf("--%u joining w/ %u\n",curr->tid,terminating->tid);
-			value_ptr=terminating->retVal;
+			//dereference ** to set equal to return thing
+			//to deref **, cast to double (sizeof(double)=sizeof(pointer))
+			//goto location and set what void* retVal points to
+			if(value_ptr!=NULL)
+			{	
+				double** temp=(double**)value_ptr;
+				*temp=terminating->retVal;	
+			}
 			terminating=terminating->nxt;
 			free(terminating);
 			activeThreads--;
@@ -451,9 +464,12 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr)
 			{
 				if(ptr->tid==thread)
 				{
-//					printf("--%u joining w/ %u\n",curr->tid,ptr->tid);
 					prev->nxt=ptr->nxt;
-					value_ptr=ptr->retVal; //not too sure about this (pointer stuff)
+					if(value_ptr!=NULL)
+					{
+						double** temp=(double**)value_ptr;
+						*temp=ptr->retVal;
+					}
 					free(ptr);
 					activeThreads--;
 					return 0;
