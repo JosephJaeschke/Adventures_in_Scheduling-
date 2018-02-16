@@ -114,21 +114,24 @@ void scheduler()
 		printf("-sched\n");
 //		printf("--tid:%u op:%d\n",curr->tid,curr->oldPriority);
 //		printf("--tid2:%u\n",queue[curr->oldPriority]->tid);
-//		printf("--sched | p=%u, op=%u\n",curr->priority,curr->oldPriority);
-//		fflush(stdout);
+		//printf("--sched | p=%u, op=%u\n",curr->priority,curr->oldPriority);
+		//fflush(stdout);
 		//remove curr from queue at old priority level
-		if(curr->state!=4)
+		if(curr->state!=4 && curr->state != 3)
 		{
+			//printf("did I even make it this far??? queue[oldPriority] = %d, curr->tid = %d\n", queue[curr->oldPriority]->tid, curr->tid);
 			if(queue[curr->oldPriority]->tid == curr->tid)
-			{
+			{	
 				queue[curr->oldPriority]=queue[curr->oldPriority]->nxt;
 			}
 			else
 			{
+				//printf("in the first else\n");
 				tcb *ptr, *prev;
 				ptr = queue[curr->oldPriority];
 				while(ptr->nxt != NULL)
 				{
+					//printf("all up in that while\n");
 					if(ptr->tid == curr->tid)
 					{
 						prev->nxt = ptr->nxt;
@@ -147,10 +150,12 @@ void scheduler()
 			curr->nxt=NULL;
 			if(queue[curr->priority]==NULL)//if empty
 			{
+				//printf("this shit empty\n");
 				queue[curr->priority]=curr;
 			}
 			else
 			{
+				//printf("not empty, in the else\n");
 				tcb* temp=queue[curr->priority];
 				while(temp->nxt!=NULL)
 				{
@@ -185,7 +190,7 @@ void scheduler()
 			}
 			if(found)
 			{
-			//	printf("\n--run thread w/ id=%u p=%d op=%d\n",curr->tid,curr->priority,curr->oldPriority);
+				//printf("\n--run thread w/ id=%u p=%d op=%d\n",curr->tid,curr->priority,curr->oldPriority);
 				break;
 			}
 		}
@@ -199,8 +204,10 @@ void scheduler()
 		timer.it_value.tv_usec=(curr->priority+1)*25000;
 		setitimer(ITIMER_REAL,&timer,NULL);
 		mode=1;
+		//printf("joe says may here?\n");
 		swapcontext(&ctx_sched,&curr->context);
 	}
+	//printf("leaving sched\n");
 	return;
 }
 
@@ -484,6 +491,8 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr)
 /* initial the mutex lock */
 int my_pthread_mutex_init(my_pthread_mutex_t *mutex, const pthread_mutexattr_t *mutexattr) 
 {
+
+	printf("In mutex_init!!!!!\n");
 	//from my understanding, the user is passing in a pointer to a my_pthread_mutex_t object, which is a struct pointer?
 	if (mutexList == NULL)
 	{
@@ -501,16 +510,19 @@ int my_pthread_mutex_init(my_pthread_mutex_t *mutex, const pthread_mutexattr_t *
 	mutex->maxP=PRIORITY_LEVELS;
 	//mutex->has = curr;
 	mutex->next = NULL;
+	printf("mutex initialized, locked = %d\n", mutex->locked);
 	return 0;
 }
 
 /* aquire the mutex lock */
 int my_pthread_mutex_lock(my_pthread_mutex_t *mutex) 
 {
+	printf("in mutex_lock!!!!!!!!!!!!!!\n");
 	while(__atomic_test_and_set(&mutex->locked, __ATOMIC_SEQ_CST) == 1)
 	{
 		//mutex already locked, change state to waiting
 		curr->state = 3;
+		printf("mutex was already locked!!! OH NOOOS!! state = %d\n", curr->state);
 		//remove curr from ready queue
 		if (queue[curr->priority]->tid == curr->tid)
 		{
@@ -529,6 +541,7 @@ int my_pthread_mutex_lock(my_pthread_mutex_t *mutex)
 				ptr = ptr->nxt;
 			}
 		}
+		printf("mutex removed curr from ready!!!!!!!!!!!!!\n");
 		
 		//place curr at the end of waiting queue for this mutex
 		if(mutex->waiting == NULL)
@@ -542,33 +555,44 @@ int my_pthread_mutex_lock(my_pthread_mutex_t *mutex)
 			}
 			ptr->nxt = curr;
 		}
+		printf("mutex placed curr at end of waiting queue! ready to yield\n");
 		my_pthread_yield();
 	}
+	printf("mutex was not locked. mutex is belong to me now! mwuahahahaha!\n");
 	return 0;
 }
 
 /* release the mutex lock */
 int my_pthread_mutex_unlock(my_pthread_mutex_t *mutex) 
 {
+	printf("in mutex_unlock!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
 	//double check that mutex is not already unlocked (just in case)
 	if(mutex->locked == 0)
 	{
-		printf("ERROR: Attempting to unlock UNLOCKE mutex\n");
+		printf("ERROR: Attempting to unlock UNLOCKED mutex\n");
 		return 1;
 	}
 
 	//update mutex_locked status and place next in waiting queue into ready queue
 	__atomic_clear(&mutex->locked, __ATOMIC_SEQ_CST);
-	tcb *ptr = mutex->waiting;
-	mutex->waiting = ptr->nxt;
-	ptr->state = 1; //change state to ready
-	queue[0] = ptr;	//need to properly add
+	if (mutex->waiting != NULL)
+	{
+		tcb *ptr = mutex->waiting;
+		mutex->waiting = ptr->nxt;
+		ptr->state = 1; //change state to ready
+		ptr->nxt = queue[0]; //add to front of priority queue for now
+		queue[0] = ptr;	//need to properly add
+		ptr->priority = 0; //reintegrating into society
+		ptr->oldPriority = 0;
+	}
+	printf("mutex should be unlocked now and next in waiting queue is now ready!\n");
 	return 0;
 }
 
 /* destroy the mutex */
 int my_pthread_mutex_destroy(my_pthread_mutex_t *mutex) 
 {
+	printf("in mutex_destroy!!!!!!!!!!!!!!!!!!\n");
 	//cannot destroy a locked mutex
 	if (mutex->locked == 1)
 	{
@@ -597,6 +621,7 @@ int my_pthread_mutex_destroy(my_pthread_mutex_t *mutex)
 			ptr = ptr->next;
 		}
 	}
+	printf("mutex should be removed from mutexList and lock status = %d\n", mutex->locked);
 	return 0;
 }
 

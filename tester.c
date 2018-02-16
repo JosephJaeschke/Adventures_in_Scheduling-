@@ -1,11 +1,19 @@
 #include "my_pthread.c"
 
+my_pthread_mutex_t lock;
+//my_pthread_mutex_init(&lock, NULL);
+long long count = 0;
+
 void* fun()
 {
 	printf("In fun\n");
 	int a=4;
 	int* ret=&a;
 	*ret=4;
+	my_pthread_mutex_lock(&lock);
+	count += 1;
+	pthread_yield();
+	my_pthread_mutex_unlock(&lock);
 	pthread_exit((void*)ret);
 //	int i=0;
 //	while(i<999999999)
@@ -20,11 +28,19 @@ int main()
 	pthread_t tid;
 	printf("start thread stuff\n");
 	pthread_create(&tid,NULL,fun,NULL);
+	my_pthread_mutex_init(&lock, NULL);
+	pthread_yield();
+	printf("returned from the yieldy void\n");
 	void** v=malloc(sizeof(int));
+	my_pthread_mutex_lock(&lock);
+	count += 5;
+	pthread_yield();
+	my_pthread_mutex_unlock(&lock);
 	pthread_join(tid,v);
 	printf("answer: ");
 	fflush(stdout);
 	printf("%d\n",**(int**)v);
+	my_pthread_mutex_destroy(&lock);
 	printf("DONE!!!\n");
 	return 0;
 }
