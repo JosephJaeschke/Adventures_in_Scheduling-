@@ -4,16 +4,16 @@ my_pthread_mutex_t lock;
 //my_pthread_mutex_init(&lock, NULL);
 long long count = 0;
 
-void* fun()
+void* fun(void* i)
 {
-	printf("In fun\n");
+	printf("In fun w. param=%d\n",*(int*)i);
 	int a=4;
 	int* ret=&a;
 	*ret=4;
-	my_pthread_mutex_lock(&lock);
-	count += 1;
-	pthread_yield();
-	my_pthread_mutex_unlock(&lock);
+//	my_pthread_mutex_lock(&lock);
+//	count += 1;
+//	pthread_yield();
+//	my_pthread_mutex_unlock(&lock);
 	pthread_exit((void*)ret);
 //	int i=0;
 //	while(i<999999999)
@@ -26,21 +26,22 @@ void* fun()
 int main()
 {
 	pthread_t tid;
+	int a=12;
 	printf("start thread stuff\n");
-	pthread_create(&tid,NULL,fun,NULL);
-	my_pthread_mutex_init(&lock, NULL);
-	pthread_yield();
-	printf("returned from the yieldy void\n");
+	pthread_create(&tid,NULL,fun,&a);
+//	my_pthread_mutex_init(&lock, NULL);
+//	pthread_yield();
+//	printf("returned from the yieldy void\n");
 	void** v=malloc(sizeof(int));
-	my_pthread_mutex_lock(&lock);
-	count += 5;
-	pthread_yield();
-	my_pthread_mutex_unlock(&lock);
+//	my_pthread_mutex_lock(&lock);
+//	count += 5;
+//	pthread_yield();
+//	my_pthread_mutex_unlock(&lock);
 	pthread_join(tid,v);
 	printf("answer: ");
-	fflush(stdout);
+//	fflush(stdout);
 	printf("%d\n",**(int**)v);
-	my_pthread_mutex_destroy(&lock);
+//	my_pthread_mutex_destroy(&lock);
 	printf("DONE!!!\n");
 	return 0;
 }
