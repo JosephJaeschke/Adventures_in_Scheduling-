@@ -46,12 +46,15 @@ typedef struct my_pthread_mutex_t
 	struct my_pthread_mutex_t* next; //pointer to next mutex to create mutexList
 } my_pthread_mutex_t;
 
-typedef struct _package
+typedef union _mask
 {
-	void* (*functionP)(void*);
-	void* argsP;
-}package;
-
+	struct _halfs
+	{
+		int lhalf:32;
+		int hhalf:32;
+	}halfs;
+	void* data;
+}mask;
 /* define your data structures here: */
 
 tcb** queue;
