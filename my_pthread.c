@@ -180,12 +180,12 @@ void scheduler()
 		int i,found=0;
 		tcb* ptr;
 		curr->state=1;
-//		maintenanceCounter--;
-//		if(maintenanceCounter==0)
-//		{
-//			maintenanceCounter=MAINTENANCE;
-//			maintenance();
-//		}
+		maintenanceCounter--;
+		if(maintenanceCounter==0)
+		{
+			maintenanceCounter=MAINTENANCE;
+			maintenance();
+		}
 		//try to find a thread that can be run
 		for(i=0;i<PRIORITY_LEVELS;i++)
 		{
@@ -215,7 +215,7 @@ void scheduler()
 			return;
 		}
 		timer.it_value.tv_sec=0;
-		timer.it_value.tv_usec=(curr->priority+1)*25;
+		timer.it_value.tv_usec=(curr->priority+1)*25000;
 		setitimer(ITIMER_REAL,&timer,NULL);
 		mode=1;
 		swapcontext(&ctx_sched,&curr->context);
@@ -225,37 +225,31 @@ void scheduler()
 
 void maintenance()
 {
-	printf("--mmmmmmmmmmmmmmmmmmmmmmmmmmm\n");
+	printf("--mmm\n");
 	//give all threads priority 0 to prevent starvation
 	int i;
 	tcb* new=malloc(sizeof(tcb));
 	tcb* head=new;
-	new=queue[0];
-	while(new!=NULL&&new->nxt!=NULL)
+	tcb* tmp;
+	for(i=0;i<PRIORITY_LEVELS;i++)
 	{
-		new=new->nxt;
-	}
-	for(i=1;i<PRIORITY_LEVELS;i++)
-	{
-		if(new==NULL)
-		{
-			new=queue[i];
-		}
-		else
+		if(queue[i]!=NULL)
 		{
 			new->nxt=queue[i];
-			new=new->nxt;
-		}
-		while(new!=NULL&&new->nxt!=NULL)
-		{
+			while(new->nxt!=NULL)
+			{
+				new->priority=0;
+				new->oldPriority=0;
+				new=new->nxt;
+			}
 			new->priority=0;
 			new->oldPriority=0;
-			new=new->nxt;
+			queue[i]=NULL;
 		}
-		queue[i]=NULL;
 	}
-	queue[0]=head;
-	free(new);
+	queue[0]=head->nxt;
+//	free(new);
+	printf("--/www\n");
 	return;
 }
 
@@ -333,7 +327,7 @@ int my_pthread_create(my_pthread_t* thread, pthread_attr_t* attr, void*(*functio
 		//set first timer
 		signal(SIGALRM,alarm_handler);
 		timer.it_value.tv_sec=0;	
-		timer.it_value.tv_usec=25; 
+		timer.it_value.tv_usec=25000; 
 		setitimer(ITIMER_REAL,&timer,NULL);
 //		printf("--timer set\n");
 		ptinit=1;

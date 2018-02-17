@@ -3,9 +3,6 @@ CFLAGS = -g -c
 AR = ar -rc
 RANLIB = ranlib
 
-all:
-	gcc tester.c
-
 Target: my_pthread.a
 
 my_pthread.a: my_pthread.o
