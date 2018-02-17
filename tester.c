@@ -1,34 +1,28 @@
-#include "my_pthread.c"
+#include "my_pthread_t.h"
 
 my_pthread_mutex_t lock;
 //my_pthread_mutex_init(&lock, NULL);
 long long count = 0;
 
-void* fun(void* i)
+void* fun()
 {
-	printf("In fun w. param=%d\n",*(int*)i);
+	printf("In fun\n");
 	int a=4;
 	int* ret=&a;
 	*ret=4;
-//	my_pthread_mutex_lock(&lock);
-//	count += 1;
-//	pthread_yield();
-//	my_pthread_mutex_unlock(&lock);
-	pthread_exit((void*)ret);
-//	int i=0;
-//	while(i<999999999)
-//	{
-//		i=i+1;
-//	}
-//	printf("done being busy\n");
+	int i=0;
+	while(i<999999999)
+	{
+		i=i+1;
+	}
+	printf("done being busy\n");
 }
 
 int main()
 {
 	pthread_t tid;
-	int a=12;
 	printf("start thread stuff\n");
-	pthread_create(&tid,NULL,fun,&a);
+	pthread_create(&tid,NULL,fun,NULL);
 //	my_pthread_mutex_init(&lock, NULL);
 //	pthread_yield();
 //	printf("returned from the yieldy void\n");
