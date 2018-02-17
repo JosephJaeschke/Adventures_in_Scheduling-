@@ -225,7 +225,6 @@ void scheduler()
 
 void maintenance()
 {
-	printf("--mmm\n");
 	//give all threads priority 0 to prevent starvation
 	int i;
 	tcb* new=malloc(sizeof(tcb));
@@ -248,8 +247,8 @@ void maintenance()
 		}
 	}
 	queue[0]=head->nxt;
-//	free(new);
-	printf("--/www\n");
+	new=head;
+	free(new);
 	return;
 }
 
@@ -471,6 +470,7 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr)
 				*temp=terminating->retVal;	
 			}
 			terminating=terminating->nxt;
+			free(terminating->context.uc_stack.ss_sp);
 			free(terminating);
 			activeThreads--;
 			curr->state=1;
@@ -491,6 +491,7 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr)
 						double** temp=(double**)value_ptr;
 						*temp=ptr->retVal;
 					}
+					free(ptr->context.uc_stack.ss_sp);
 					free(ptr);
 					activeThreads--;
 					return 0;
