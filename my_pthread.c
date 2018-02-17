@@ -143,12 +143,10 @@ void scheduler()
 			}
 			else
 			{
-				//printf("in the first else\n");
 				tcb *ptr, *prev;
 				ptr = queue[curr->oldPriority];
 				while(ptr->nxt != NULL)
 				{
-					//printf("all up in that while\n");
 					if(ptr->tid == curr->tid)
 					{
 						prev->nxt = ptr->nxt;
@@ -167,12 +165,10 @@ void scheduler()
 			curr->nxt=NULL;
 			if(queue[curr->priority]==NULL)//if empty
 			{
-				//printf("this shit empty\n");
 				queue[curr->priority]=curr;
 			}
 			else
 			{
-				//printf("not empty, in the else\n");
 				tcb* temp=queue[curr->priority];
 				while(temp->nxt!=NULL)
 				{
@@ -207,7 +203,8 @@ void scheduler()
 			}
 			if(found)
 			{
-				//printf("\n--run thread w/ id=%u p=%d op=%d\n",curr->tid,curr->priority,curr->oldPriority);
+				printf("--run thread w/ id=%u p=%d op=%d\n",curr->tid,curr->priority,curr->oldPriority);
+				fflush(stdout);
 				break;
 			}
 		}
@@ -218,7 +215,7 @@ void scheduler()
 			return;
 		}
 		timer.it_value.tv_sec=0;
-		timer.it_value.tv_usec=(curr->priority+1)*25000;
+		timer.it_value.tv_usec=(curr->priority+1)*25;
 		setitimer(ITIMER_REAL,&timer,NULL);
 		mode=1;
 		swapcontext(&ctx_sched,&curr->context);
@@ -272,6 +269,7 @@ void clean() //still need to setup context
 /* create a new thread */
 int my_pthread_create(my_pthread_t* thread, pthread_attr_t* attr, void*(*function)(void*), void * arg)
 {
+	printf("--create\n");
 	if(ptinit==0)
 	{
 		//init stuff
@@ -335,7 +333,7 @@ int my_pthread_create(my_pthread_t* thread, pthread_attr_t* attr, void*(*functio
 		//set first timer
 		signal(SIGALRM,alarm_handler);
 		timer.it_value.tv_sec=0;	
-		timer.it_value.tv_usec=25000; 
+		timer.it_value.tv_usec=25; 
 		setitimer(ITIMER_REAL,&timer,NULL);
 //		printf("--timer set\n");
 		ptinit=1;
@@ -397,7 +395,7 @@ int my_pthread_create(my_pthread_t* thread, pthread_attr_t* attr, void*(*functio
 /* give CPU pocession to other user level threads voluntarily */
 int my_pthread_yield()
 {
-//	printf("--yield\n");
+	printf("--yield\n");
 //	fflush(stdout);
 	curr->priority = PRIORITY_LEVELS-1;
 	swapcontext(&curr->context,&ctx_sched);
@@ -460,7 +458,7 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr)
 {
 	printf("--join\n");
 	//mark thread as waiting
-	curr->state=3;
+	curr->state=5;
 	//look for "thread" in terminating list
 	while(1)
 	{
