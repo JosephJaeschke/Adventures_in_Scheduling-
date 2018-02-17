@@ -461,6 +461,8 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr)
 		}
 		else if(terminating->tid==thread)//thread is first in list
 		{
+			tcb* ptr=malloc(sizeof(tcb));
+			ptr=terminating;
 			//dereference ** to set equal to return thing
 			//to deref **, cast to double (sizeof(double)=sizeof(pointer))
 			//goto location and set what void* retVal points to
@@ -470,8 +472,11 @@ int my_pthread_join(my_pthread_t thread, void **value_ptr)
 				*temp=terminating->retVal;	
 			}
 			terminating=terminating->nxt;
-			free(terminating->context.uc_stack.ss_sp);
-			free(terminating);
+			if(ptr->context.uc_stack.ss_sp!=NULL)
+			{
+				free(ptr->context.uc_stack.ss_sp);
+			}
+			free(ptr);
 			activeThreads--;
 			curr->state=1;
 			return 0;
