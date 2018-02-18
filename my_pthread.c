@@ -93,7 +93,7 @@ void wrapper(int f1,int f2,int a1,int a2)
 	free(p);
 	free(s);
 	
-	printf("--start wrapping\n");
+//	printf("--start wrapping\n");
 	curr->retVal=(*f)(a);
 //	printf("--done wrapping\n");
 //	fflush(stdout);
@@ -128,7 +128,7 @@ void scheduler()
 	while(1)
 	{
 		mode=0;
-		printf("-sched\n");
+//		printf("-sched\n");
 //		printf("--tid:%u op:%d\n",curr->tid,curr->oldPriority);
 //		printf("--tid2:%u\n",queue[curr->oldPriority]->tid);
 		//printf("--sched | p=%u, op=%u\n",curr->priority,curr->oldPriority);
@@ -203,7 +203,7 @@ void scheduler()
 			}
 			if(found)
 			{
-				printf("--run thread w/ id=%u p=%d op=%d\n",curr->tid,curr->priority,curr->oldPriority);
+//				printf("--run thread w/ id=%u p=%d op=%d\n",curr->tid,curr->priority,curr->oldPriority);
 				fflush(stdout);
 				break;
 			}
@@ -211,7 +211,7 @@ void scheduler()
 		//if there is no thread that can run
 		if(!found)
 		{
-			printf("--Found no thread ready to run\n");
+//			printf("--Found no thread ready to run\n");
 			return;
 		}
 		timer.it_value.tv_sec=0;
@@ -262,7 +262,7 @@ void clean() //still need to setup context
 /* create a new thread */
 int my_pthread_create(my_pthread_t* thread, pthread_attr_t* attr, void*(*function)(void*), void * arg)
 {
-	printf("--create\n");
+//	printf("--create\n");
 	if(ptinit==0)
 	{
 		//init stuff
@@ -388,7 +388,7 @@ int my_pthread_create(my_pthread_t* thread, pthread_attr_t* attr, void*(*functio
 /* give CPU pocession to other user level threads voluntarily */
 int my_pthread_yield()
 {
-	printf("--yield\n");
+//	printf("--yield\n");
 //	fflush(stdout);
 	curr->priority = PRIORITY_LEVELS-1;
 	swapcontext(&curr->context,&ctx_sched);
@@ -397,7 +397,7 @@ int my_pthread_yield()
 /* terminate a thread */
 void my_pthread_exit(void* value_ptr)
 {
-	printf("--exit\n");
+//	printf("--exit\n");
 	fflush(stdout);
 	if(value_ptr==NULL)
 	{
@@ -449,7 +449,7 @@ void my_pthread_exit(void* value_ptr)
 /* wait for thread termination */
 int my_pthread_join(my_pthread_t thread, void **value_ptr)
 {
-	printf("--join\n");
+//	printf("--join\n");
 	//mark thread as waiting
 	curr->state=5;
 	//look for "thread" in terminating list
