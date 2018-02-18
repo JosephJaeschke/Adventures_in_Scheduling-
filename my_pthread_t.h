@@ -2,9 +2,9 @@
 // Author:	Yujie REN
 // Date:	09/23/2017
 
-// name: Joseph Jaeschke, Crystal Calandra
-// username of iLab:
-// iLab Server: 
+// name: Joseph Jaeschke, Crystal Calandra, Adeeb Kebir
+// username of iLab: jjj93, crystaca, ask171
+// iLab Server: cray1
 */
 #ifndef MY_PTHREAD_T_H
 #define MY_PTHREAD_T_H
