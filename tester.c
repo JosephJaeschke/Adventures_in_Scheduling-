@@ -23,19 +23,20 @@ int main()
 	pthread_t tid;
 	printf("start thread stuff\n");
 	pthread_create(&tid,NULL,fun,NULL);
-//	my_pthread_mutex_init(&lock, NULL);
-//	pthread_yield();
-//	printf("returned from the yieldy void\n");
+	my_pthread_mutex_init(&lock, NULL);
+	pthread_yield();
+	printf("returned from the yieldy void\n");
 	void** v=malloc(sizeof(int));
-//	my_pthread_mutex_lock(&lock);
-//	count += 5;
-//	pthread_yield();
-//	my_pthread_mutex_unlock(&lock);
+	my_pthread_mutex_lock(&lock);
+	count += 5;
+	pthread_yield();
+	my_pthread_mutex_unlock(&lock);
 	pthread_join(tid,v);
 	printf("answer: ");
 //	fflush(stdout);
 	printf("%d\n",**(int**)v);
-//	my_pthread_mutex_destroy(&lock);
+	my_pthread_mutex_destroy(&lock);
+	my_pthread_mutex_lock(&lock);
 	printf("DONE!!!\n");
 	return 0;
 }

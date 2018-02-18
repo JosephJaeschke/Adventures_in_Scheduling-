@@ -2,7 +2,7 @@
 // Author:	Yujie REN
 // Date:	09/23/2017
 
-// name:
+// name: Joseph Jaeschke, Crystal Calandra
 // username of iLab:
 // iLab Server:
 
@@ -538,8 +538,10 @@ int my_pthread_mutex_init(my_pthread_mutex_t *mutex, const pthread_mutexattr_t *
 int my_pthread_mutex_lock(my_pthread_mutex_t *mutex) 
 {
 	//printf("in mutex_lock!!!!!!!!!!!!!!\n");
-	while(__atomic_test_and_set(&mutex->locked, __ATOMIC_SEQ_CST) == 1)
+	int lockStatus;
+	while((lockStatus = __atomic_test_and_set(&mutex->locked, __ATOMIC_SEQ_CST)) == 1)
 	{
+		
 		//mutex already locked, change state to waiting
 		curr->state = 3;
 	//	printf("mutex was already locked!!! OH NOOOS!! state = %d\n", curr->state);
@@ -578,6 +580,11 @@ int my_pthread_mutex_lock(my_pthread_mutex_t *mutex)
 	//	printf("mutex placed curr at end of waiting queue! ready to yield\n");
 		my_pthread_yield();
 	}
+	if (lockStatus == 2){
+		printf("ERROR: attempting to lock 'destroyed' mutex\n");
+		return 1;
+	}
+
 	//printf("mutex was not locked. mutex is belong to me now! mwuahahahaha!\n");
 	return 0;
 }
