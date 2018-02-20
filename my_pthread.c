@@ -26,7 +26,7 @@
 #define pthread_yield my_pthread_yield
 #define pthread_mutex_init my_pthread_mutex_init
 #define pthread_mutex_lock my_pthread_mutex_lock
-#define pthread_mutex_unlock my_pthread_mutex_unlock
+#define pthread_mutex_unlock my_pthread_mutex_unlock 
 #define pthread_mutex_destroy my_pthread_mutex_destroy
 
 short mode=0; //0 for SYS, 1 for USR
@@ -134,6 +134,67 @@ void scheduler()
 		//printf("--sched | p=%u, op=%u\n",curr->priority,curr->oldPriority);
 		//fflush(stdout);
 		//remove curr from queue at old priority level
+		
+
+		//before any scheduling, do checks to see if we need to move any threads 
+		//with locks to higher priorities.  if so, add them at the head
+		if(mutexList != NULL)
+		{
+			my_pthread_mutex_t* lock = mutexList;
+			while (lock != NULL)
+			{
+				tcb *toMove = lock->has_lock;
+
+				//if we need to change where this thing goes
+				if (lock->priorityChange == 1)
+				{
+					//if it's the first at its priority level
+					//or if that level is now empty (possible since this is nonlinear)
+					if (queue[toMove->priority]->tid == toMove->tid)
+					{
+						queue[toMove->priority] = queue[toMove->priority]->nxt;
+					}	
+
+					//else we'll iterate through
+					else 
+					{
+						tcb *ptr, *prev;
+						ptr = queue[toMove->priority];
+
+						while (ptr->nxt != NULL)
+						{
+							if (ptr->tid == toMove->tid)
+							{
+								prev->nxt = ptr->nxt; 
+								break;
+							}
+							
+							prev = ptr;
+							ptr = ptr->nxt;
+						}
+					}
+
+
+					//now that it's removed, add it to the head
+					//the head at level maxSeenPriority that is
+					tcb *maxHead = queue[lock->maxSeenPriority];
+					toMove->nxt = maxHead;
+					queue[lock->maxSeenPriority] = toMove;
+
+					//update the thread that locked
+					//give it appropriate priority that matches its current one
+					//revert priorityChange to 0
+					//drop maxSeenPriority so we don't keep doing this after one time slice
+					toMove->priority = lock->maxSeenPriority;
+					toMove->oldPriority = toMove->priority;
+					lock->priorityChange = 0;
+					lock->maxSeenPriority = PRIORITY_LEVELS - 1;
+				}
+			}
+		}
+
+
+
 		if(curr->state!=4 && curr->state != 3)
 		{
 			//printf(queue[oldPriority] = %d, curr->tid = %d\n", queue[curr->oldPriority]->tid, curr->tid);
@@ -385,7 +446,7 @@ int my_pthread_create(my_pthread_t* thread, pthread_attr_t* attr, void*(*functio
 	return 0;
 }
 
-/* give CPU pocession to other user level threads voluntarily */
+/* give CPU posession to other user level threads voluntarily */
 int my_pthread_yield()
 {
 //	printf("--yield\n");
@@ -528,6 +589,9 @@ int my_pthread_mutex_init(my_pthread_mutex_t *mutex, const pthread_mutexattr_t *
 	}
 	mutex->locked = 0;
 	mutex->maxP=PRIORITY_LEVELS;
+	mutex->maxSeenPriority = PRIORITY_LEVELS - 1;
+	mutex->has_lock = NULL;
+	mutex->priorityChange = 0;
 	//mutex->has = curr;
 	mutex->next = NULL;
 	//printf("mutex initialized, locked = %d\n", mutex->locked);
@@ -544,6 +608,15 @@ int my_pthread_mutex_lock(my_pthread_mutex_t *mutex)
 		
 		//mutex already locked, change state to waiting
 		curr->state = 3;
+
+		//check to see if this thread has a greater priority than what was last seen
+		//if so record it and set the change variable on so the scheduler can move it
+		if (curr->priority < mutex->maxSeenPriority)
+		{	
+			mutex->maxSeenPriority = curr->priority;
+			mutex->priorityChange = 1;
+		}
+
 	//	printf("mutex was already locked!!! OH NOOOS!! state = %d\n", curr->state);
 		//remove curr from ready queue
 		if (queue[curr->priority]->tid == curr->tid)
@@ -585,6 +658,7 @@ int my_pthread_mutex_lock(my_pthread_mutex_t *mutex)
 		return 1;
 	}
 
+	mutex->has_lock = curr;
 	//printf("mutex was not locked. mutex is belong to me now! mwuahahahaha!\n");
 	return 0;
 }
@@ -602,6 +676,12 @@ int my_pthread_mutex_unlock(my_pthread_mutex_t *mutex)
 
 	//update mutex_locked status and place next in waiting queue into ready queue
 	__atomic_clear(&mutex->locked, __ATOMIC_SEQ_CST);
+
+	//also reset inheritance values
+	mutex->has_lock = NULL;
+	mutex->maxSeenPriority = PRIORITY_LEVELS - 1;
+	mutex->priorityChange = 0;
+
 	if (mutex->waiting != NULL)
 	{
 		tcb *ptr = mutex->waiting;

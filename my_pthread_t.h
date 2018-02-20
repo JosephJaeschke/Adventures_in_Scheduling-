@@ -52,6 +52,9 @@ typedef struct my_pthread_mutex_t
 {
 	int locked; //unlocked = 0; locked = 1; destroyed = 2;
 	tcb* waiting; //waiting queue of threads for this mutex, 
+	tcb* has_lock; //keeps track of who has lock.  used for inheritance
+	int maxSeenPriority; //maximum seen priority when locked, starts at PRIORITY_LEVELS-1
+	int priorityChange; //0 if priority is fine, 1 if seen a better one and needs to move
 	int maxP;
 	//first in waiting queue is first to run when mutex unlocked
 	struct my_pthread_mutex_t* next; //pointer to next mutex to create mutexList
